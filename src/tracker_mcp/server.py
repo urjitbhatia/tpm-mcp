@@ -31,10 +31,193 @@ def _json(obj) -> str:
 @server.list_tools()
 async def list_tools() -> list[Tool]:
     return [
-        # Orgs
+        # Roadmap view - PRIMARY TOOL for checking status
+        Tool(
+            name="roadmap_view",
+            description="""PROJECT MANAGEMENT (TPM): Get the full project roadmap showing all work status.
+
+USE THIS TOOL WHEN:
+- User asks "what's in progress?" or "what are we working on?"
+- User asks "TPM status", ":TPM:" prefix, or "show me the roadmap"
+- User asks about pending/blocked/completed work
+- User asks "what features are we working on this sprint?"
+- You need to check what features or tasks exist before updating status
+- Starting a work session to see current state
+- After git operations to map changes to tracked tasks
+- User completes work and you need to find related tasks to mark done
+
+This replaces the project-tracking-pm agent. Returns all organizations, projects, features (with status/priority), and their tasks.""",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "org_id": {"type": "string", "description": "Filter by organization ID (optional)"},
+                    "format": {"type": "string", "enum": ["json", "summary"],
+                              "description": "Output format: 'json' for full data, 'summary' for readable overview (default: summary)"}
+                }
+            }
+        ),
+        # Feature operations
+        Tool(
+            name="feature_create",
+            description="""PROJECT MANAGEMENT (TPM): Create a new feature, epic, or issue to track.
+
+USE THIS TOOL WHEN:
+- User says ":TPM: Add X feature to the roadmap"
+- User wants to add a new feature/ticket/issue
+- User says "add ticket for X" or "create feature for Y"
+- Breaking down work into trackable items
+- User asks to scope out or define new work
+- User discusses new work that should be tracked
+
+Use roadmap_view first to get the project_id. Features are high-level work items (like Jira epics/stories).""",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "project_id": {"type": "string", "description": "Project ID (use project_list to find)"},
+                    "title": {"type": "string", "description": "Feature title"},
+                    "description": {"type": "string", "description": "Detailed description of the feature"},
+                    "status": {"type": "string", "enum": ["backlog", "planned", "in-progress", "done", "blocked"],
+                             "description": "Feature status (default: backlog)"},
+                    "priority": {"type": "string", "enum": ["critical", "high", "medium", "low"],
+                                "description": "Priority level (default: medium)"},
+                    "tags": {"type": "array", "items": {"type": "string"}, "description": "Tags for categorization"},
+                    "assignees": {"type": "array", "items": {"type": "string"}, "description": "Who is working on this"}
+                },
+                "required": ["project_id", "title"]
+            }
+        ),
+        Tool(
+            name="feature_update",
+            description="""PROJECT MANAGEMENT (TPM): Update a feature's status, priority, or details.
+
+USE THIS TOOL WHEN:
+- User says "I just finished implementing X" - mark related feature as done
+- User says "I've pushed commits for X" - update status based on progress
+- Marking work as in-progress, done, or blocked
+- Changing priority of a feature
+- User completes a feature and needs to update status
+- Adding/updating tags or assignees
+
+Use roadmap_view first to find the feature_id.""",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "feature_id": {"type": "string", "description": "Feature ID (e.g., FEAT-001)"},
+                    "title": {"type": "string", "description": "New title"},
+                    "description": {"type": "string", "description": "New description"},
+                    "status": {"type": "string", "enum": ["backlog", "planned", "in-progress", "done", "blocked"],
+                             "description": "New status"},
+                    "priority": {"type": "string", "enum": ["critical", "high", "medium", "low"],
+                                "description": "New priority"},
+                    "tags": {"type": "array", "items": {"type": "string"}, "description": "Updated tags"},
+                    "assignees": {"type": "array", "items": {"type": "string"}, "description": "Updated assignees"}
+                },
+                "required": ["feature_id"]
+            }
+        ),
+        Tool(
+            name="feature_list",
+            description="PROJECT MANAGEMENT: List features filtered by project or status. Use roadmap_view for full overview.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "project_id": {"type": "string", "description": "Filter by project ID"},
+                    "status": {"type": "string", "enum": ["backlog", "planned", "in-progress", "done", "blocked"],
+                             "description": "Filter by status"}
+                }
+            }
+        ),
+        Tool(
+            name="feature_get",
+            description="PROJECT MANAGEMENT: Get detailed info about a specific feature including all its tasks.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "feature_id": {"type": "string", "description": "Feature ID (e.g., FEAT-001)"}
+                },
+                "required": ["feature_id"]
+            }
+        ),
+        # Task operations
+        Tool(
+            name="task_create",
+            description="""PROJECT MANAGEMENT: Create a task (sub-item) under a feature.
+
+USE THIS TOOL WHEN:
+- Breaking down a feature into smaller tasks
+- User asks to add implementation steps
+- Creating a work breakdown structure""",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "feature_id": {"type": "string", "description": "Parent feature ID"},
+                    "title": {"type": "string", "description": "Task title"},
+                    "details": {"type": "string", "description": "Task details/implementation notes"},
+                    "status": {"type": "string", "enum": ["pending", "in-progress", "done", "blocked"],
+                             "description": "Task status (default: pending)"},
+                    "priority": {"type": "string", "enum": ["critical", "high", "medium", "low"],
+                                "description": "Priority (default: medium)"},
+                    "complexity": {"type": "string", "enum": ["simple", "medium", "complex"],
+                                  "description": "Complexity estimate (default: medium)"}
+                },
+                "required": ["feature_id", "title"]
+            }
+        ),
+        Tool(
+            name="task_update",
+            description="PROJECT MANAGEMENT: Update a task's status or details. Use when completing or updating task progress.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "task_id": {"type": "string", "description": "Task ID (e.g., TASK-001-1)"},
+                    "title": {"type": "string", "description": "New title"},
+                    "details": {"type": "string", "description": "New details"},
+                    "status": {"type": "string", "enum": ["pending", "in-progress", "done", "blocked"],
+                             "description": "New status"},
+                    "priority": {"type": "string", "enum": ["critical", "high", "medium", "low"],
+                                "description": "New priority"},
+                    "complexity": {"type": "string", "enum": ["simple", "medium", "complex"],
+                                  "description": "New complexity"}
+                },
+                "required": ["task_id"]
+            }
+        ),
+        Tool(
+            name="task_list",
+            description="PROJECT MANAGEMENT: List tasks filtered by feature or status.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "feature_id": {"type": "string", "description": "Filter by feature ID"},
+                    "status": {"type": "string", "enum": ["pending", "in-progress", "done", "blocked"],
+                             "description": "Filter by status"}
+                }
+            }
+        ),
+        # Notes
+        Tool(
+            name="note_add",
+            description="PROJECT MANAGEMENT: Add a note/comment to a feature or task for context or decisions.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "entity_type": {"type": "string", "enum": ["org", "project", "feature", "task"],
+                                   "description": "Type of entity"},
+                    "entity_id": {"type": "string", "description": "ID of the entity"},
+                    "content": {"type": "string", "description": "Note content"}
+                },
+                "required": ["entity_type", "entity_id", "content"]
+            }
+        ),
+        # Org/Project operations (less frequently used)
+        Tool(
+            name="org_list",
+            description="PROJECT MANAGEMENT: List all organizations. Usually only one org exists.",
+            inputSchema={"type": "object", "properties": {}}
+        ),
         Tool(
             name="org_create",
-            description="Create a new organization",
+            description="PROJECT MANAGEMENT: Create a new organization (rarely needed).",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -44,166 +227,27 @@ async def list_tools() -> list[Tool]:
             }
         ),
         Tool(
-            name="org_list",
-            description="List all organizations",
-            inputSchema={"type": "object", "properties": {}}
+            name="project_list",
+            description="PROJECT MANAGEMENT: List projects in an organization.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "org_id": {"type": "string", "description": "Filter by organization ID"}
+                }
+            }
         ),
-        # Projects
         Tool(
             name="project_create",
-            description="Create a new project under an organization",
+            description="PROJECT MANAGEMENT: Create a new project under an organization.",
             inputSchema={
                 "type": "object",
                 "properties": {
                     "org_id": {"type": "string", "description": "Organization ID"},
                     "name": {"type": "string", "description": "Project name"},
-                    "repo_path": {"type": "string", "description": "Path to git repo (optional)"},
-                    "description": {"type": "string", "description": "Project description (optional)"}
+                    "repo_path": {"type": "string", "description": "Path to git repo"},
+                    "description": {"type": "string", "description": "Project description"}
                 },
                 "required": ["org_id", "name"]
-            }
-        ),
-        Tool(
-            name="project_list",
-            description="List projects, optionally filtered by org",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "org_id": {"type": "string", "description": "Filter by organization ID (optional)"}
-                }
-            }
-        ),
-        # Features
-        Tool(
-            name="feature_create",
-            description="Create a new feature/epic under a project",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "project_id": {"type": "string", "description": "Project ID"},
-                    "title": {"type": "string", "description": "Feature title"},
-                    "description": {"type": "string", "description": "Feature description (optional)"},
-                    "status": {"type": "string", "enum": ["backlog", "planned", "in-progress", "done", "blocked"],
-                             "description": "Feature status (default: backlog)"},
-                    "priority": {"type": "string", "enum": ["critical", "high", "medium", "low"],
-                                "description": "Priority (default: medium)"}
-                },
-                "required": ["project_id", "title"]
-            }
-        ),
-        Tool(
-            name="feature_list",
-            description="List features, optionally filtered by project and/or status",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "project_id": {"type": "string", "description": "Filter by project ID (optional)"},
-                    "status": {"type": "string", "enum": ["backlog", "planned", "in-progress", "done", "blocked"],
-                             "description": "Filter by status (optional)"}
-                }
-            }
-        ),
-        Tool(
-            name="feature_update",
-            description="Update a feature's status, priority, title, or description",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "feature_id": {"type": "string", "description": "Feature ID"},
-                    "title": {"type": "string", "description": "New title (optional)"},
-                    "description": {"type": "string", "description": "New description (optional)"},
-                    "status": {"type": "string", "enum": ["backlog", "planned", "in-progress", "done", "blocked"],
-                             "description": "New status (optional)"},
-                    "priority": {"type": "string", "enum": ["critical", "high", "medium", "low"],
-                                "description": "New priority (optional)"}
-                },
-                "required": ["feature_id"]
-            }
-        ),
-        Tool(
-            name="feature_get",
-            description="Get a single feature by ID with its tasks",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "feature_id": {"type": "string", "description": "Feature ID"}
-                },
-                "required": ["feature_id"]
-            }
-        ),
-        # Tasks
-        Tool(
-            name="task_create",
-            description="Create a new task under a feature",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "feature_id": {"type": "string", "description": "Feature ID"},
-                    "title": {"type": "string", "description": "Task title"},
-                    "details": {"type": "string", "description": "Task details (optional)"},
-                    "status": {"type": "string", "enum": ["pending", "in-progress", "done", "blocked"],
-                             "description": "Task status (default: pending)"},
-                    "complexity": {"type": "string", "enum": ["simple", "medium", "complex"],
-                                  "description": "Complexity (default: medium)"}
-                },
-                "required": ["feature_id", "title"]
-            }
-        ),
-        Tool(
-            name="task_list",
-            description="List tasks, optionally filtered by feature and/or status",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "feature_id": {"type": "string", "description": "Filter by feature ID (optional)"},
-                    "status": {"type": "string", "enum": ["pending", "in-progress", "done", "blocked"],
-                             "description": "Filter by status (optional)"}
-                }
-            }
-        ),
-        Tool(
-            name="task_update",
-            description="Update a task's status, title, details, or complexity",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "task_id": {"type": "string", "description": "Task ID"},
-                    "title": {"type": "string", "description": "New title (optional)"},
-                    "details": {"type": "string", "description": "New details (optional)"},
-                    "status": {"type": "string", "enum": ["pending", "in-progress", "done", "blocked"],
-                             "description": "New status (optional)"},
-                    "complexity": {"type": "string", "enum": ["simple", "medium", "complex"],
-                                  "description": "New complexity (optional)"}
-                },
-                "required": ["task_id"]
-            }
-        ),
-        # Notes
-        Tool(
-            name="note_add",
-            description="Add a note to an org, project, feature, or task",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "entity_type": {"type": "string", "enum": ["org", "project", "feature", "task"],
-                                   "description": "Type of entity to add note to"},
-                    "entity_id": {"type": "string", "description": "ID of the entity"},
-                    "content": {"type": "string", "description": "Note content"}
-                },
-                "required": ["entity_type", "entity_id", "content"]
-            }
-        ),
-        # Roadmap view
-        Tool(
-            name="roadmap_view",
-            description="Get a complete roadmap view with all orgs, projects, features, and tasks. Use this to see everything at a glance.",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "org_id": {"type": "string", "description": "Filter by organization ID (optional)"},
-                    "format": {"type": "string", "enum": ["json", "summary"],
-                              "description": "Output format: 'json' for full data, 'summary' for readable overview (default: summary)"}
-                }
             }
         ),
     ]
