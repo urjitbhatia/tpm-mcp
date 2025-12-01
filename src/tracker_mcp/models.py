@@ -1,7 +1,8 @@
 """Pydantic models for project tracking."""
+import json
 from datetime import datetime
 from enum import Enum
-from typing import Optional
+from typing import Any, Optional
 from pydantic import BaseModel, Field
 
 
@@ -10,6 +11,7 @@ class FeatureStatus(str, Enum):
     PLANNED = "planned"
     IN_PROGRESS = "in-progress"
     DONE = "done"
+    COMPLETED = "completed"  # Alias for done (used in existing data)
     BLOCKED = "blocked"
 
 
@@ -17,6 +19,7 @@ class TaskStatus(str, Enum):
     PENDING = "pending"
     IN_PROGRESS = "in-progress"
     DONE = "done"
+    COMPLETED = "completed"  # Alias for done (used in existing data)
     BLOCKED = "blocked"
 
 
@@ -70,6 +73,13 @@ class Feature(BaseModel):
     created_at: datetime
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
+    # Rich metadata fields
+    assignees: Optional[list[str]] = None
+    tags: Optional[list[str]] = None
+    related_repos: Optional[list[str]] = None
+    acceptance_criteria: Optional[list[str]] = None
+    blockers: Optional[list[str]] = None
+    metadata: Optional[dict[str, Any]] = None  # All other rich data
 
 
 class FeatureCreate(BaseModel):
@@ -78,6 +88,12 @@ class FeatureCreate(BaseModel):
     description: Optional[str] = None
     status: FeatureStatus = FeatureStatus.BACKLOG
     priority: Priority = Priority.MEDIUM
+    assignees: Optional[list[str]] = None
+    tags: Optional[list[str]] = None
+    related_repos: Optional[list[str]] = None
+    acceptance_criteria: Optional[list[str]] = None
+    blockers: Optional[list[str]] = None
+    metadata: Optional[dict[str, Any]] = None
 
 
 class FeatureUpdate(BaseModel):
@@ -85,6 +101,12 @@ class FeatureUpdate(BaseModel):
     description: Optional[str] = None
     status: Optional[FeatureStatus] = None
     priority: Optional[Priority] = None
+    assignees: Optional[list[str]] = None
+    tags: Optional[list[str]] = None
+    related_repos: Optional[list[str]] = None
+    acceptance_criteria: Optional[list[str]] = None
+    blockers: Optional[list[str]] = None
+    metadata: Optional[dict[str, Any]] = None
 
 
 class Task(BaseModel):
@@ -93,9 +115,13 @@ class Task(BaseModel):
     title: str
     details: Optional[str] = None
     status: TaskStatus = TaskStatus.PENDING
+    priority: Priority = Priority.MEDIUM
     complexity: Complexity = Complexity.MEDIUM
     created_at: datetime
     completed_at: Optional[datetime] = None
+    # Rich metadata fields
+    acceptance_criteria: Optional[list[str]] = None
+    metadata: Optional[dict[str, Any]] = None  # files_created, files_modified, test_results, etc.
 
 
 class TaskCreate(BaseModel):
@@ -103,14 +129,20 @@ class TaskCreate(BaseModel):
     title: str
     details: Optional[str] = None
     status: TaskStatus = TaskStatus.PENDING
+    priority: Priority = Priority.MEDIUM
     complexity: Complexity = Complexity.MEDIUM
+    acceptance_criteria: Optional[list[str]] = None
+    metadata: Optional[dict[str, Any]] = None
 
 
 class TaskUpdate(BaseModel):
     title: Optional[str] = None
     details: Optional[str] = None
     status: Optional[TaskStatus] = None
+    priority: Optional[Priority] = None
     complexity: Optional[Complexity] = None
+    acceptance_criteria: Optional[list[str]] = None
+    metadata: Optional[dict[str, Any]] = None
 
 
 class Note(BaseModel):
@@ -132,7 +164,8 @@ class TaskView(BaseModel):
     id: str
     title: str
     status: TaskStatus
-    complexity: Complexity
+    priority: Priority = Priority.MEDIUM
+    complexity: Complexity = Complexity.MEDIUM
 
 
 class FeatureView(BaseModel):
@@ -140,6 +173,7 @@ class FeatureView(BaseModel):
     title: str
     status: FeatureStatus
     priority: Priority
+    tags: Optional[list[str]] = None
     task_count: int = 0
     tasks_done: int = 0
     tasks: list[TaskView] = Field(default_factory=list)
@@ -164,3 +198,21 @@ class RoadmapView(BaseModel):
     """Full roadmap at a glance."""
     orgs: list[OrgView] = Field(default_factory=list)
     stats: dict = Field(default_factory=dict)
+
+
+# Helper functions for JSON serialization
+def to_json_str(value: Any) -> Optional[str]:
+    """Convert a value to JSON string for storage."""
+    if value is None:
+        return None
+    return json.dumps(value)
+
+
+def from_json_str(value: Optional[str]) -> Any:
+    """Parse a JSON string from storage."""
+    if value is None:
+        return None
+    try:
+        return json.loads(value)
+    except (json.JSONDecodeError, TypeError):
+        return None

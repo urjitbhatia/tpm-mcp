@@ -1,15 +1,16 @@
 """SQLite database operations for project tracking."""
+import json
 import sqlite3
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 from .models import (
     Org, OrgCreate,
     Project, ProjectCreate,
     Feature, FeatureCreate, FeatureUpdate, FeatureStatus,
-    Task, TaskCreate, TaskUpdate, TaskStatus,
+    Task, TaskCreate, TaskUpdate, TaskStatus, Priority, Complexity,
     Note, NoteCreate,
     RoadmapView, OrgView, ProjectView, FeatureView, TaskView,
 )
@@ -39,6 +40,37 @@ def init_db(db_path: Optional[Path] = None) -> sqlite3.Connection:
     return conn
 
 
+def _to_json(value: Any) -> Optional[str]:
+    """Convert a value to JSON string for storage."""
+    if value is None:
+        return None
+    return json.dumps(value)
+
+
+def _from_json(value: Optional[str]) -> Any:
+    """Parse a JSON string from storage."""
+    if value is None:
+        return None
+    try:
+        return json.loads(value)
+    except (json.JSONDecodeError, TypeError):
+        return None
+
+
+def _normalize_feature_status(status: str) -> str:
+    """Normalize feature status (completed -> done)."""
+    if status == "completed":
+        return "done"
+    return status
+
+
+def _normalize_task_status(status: str) -> str:
+    """Normalize task status (completed -> done)."""
+    if status == "completed":
+        return "done"
+    return status
+
+
 class TrackerDB:
     """Database operations for project tracking."""
 
@@ -62,6 +94,16 @@ class TrackerDB:
         )
         self.conn.commit()
         return Org(id=id, name=data.name, created_at=datetime.fromisoformat(now))
+
+    def create_org_with_id(self, id: str, name: str, created_at: Optional[str] = None) -> Org:
+        """Create org with specific ID (for migration)."""
+        now = created_at or self._now()
+        self.conn.execute(
+            "INSERT OR REPLACE INTO orgs (id, name, created_at) VALUES (?, ?, ?)",
+            (id, name, now)
+        )
+        self.conn.commit()
+        return Org(id=id, name=name, created_at=datetime.fromisoformat(now))
 
     def get_org(self, org_id: str) -> Optional[Org]:
         row = self.conn.execute(
@@ -90,6 +132,22 @@ class TrackerDB:
         self.conn.commit()
         return Project(id=id, org_id=data.org_id, name=data.name,
                       repo_path=data.repo_path, description=data.description,
+                      created_at=datetime.fromisoformat(now))
+
+    def create_project_with_id(self, id: str, org_id: str, name: str,
+                               repo_path: Optional[str] = None,
+                               description: Optional[str] = None,
+                               created_at: Optional[str] = None) -> Project:
+        """Create project with specific ID (for migration)."""
+        now = created_at or self._now()
+        self.conn.execute(
+            """INSERT OR REPLACE INTO projects (id, org_id, name, repo_path, description, created_at)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (id, org_id, name, repo_path, description, now)
+        )
+        self.conn.commit()
+        return Project(id=id, org_id=org_id, name=name,
+                      repo_path=repo_path, description=description,
                       created_at=datetime.fromisoformat(now))
 
     def get_project(self, project_id: str) -> Optional[Project]:
@@ -123,15 +181,49 @@ class TrackerDB:
         id = f"FEAT-{self._gen_id()}"
         now = self._now()
         self.conn.execute(
-            """INSERT INTO features (id, project_id, title, description, status, priority, created_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            """INSERT INTO features (id, project_id, title, description, status, priority, created_at,
+               assignees, tags, related_repos, acceptance_criteria, blockers, metadata)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (id, data.project_id, data.title, data.description,
-             data.status.value, data.priority.value, now)
+             data.status.value, data.priority.value, now,
+             _to_json(data.assignees), _to_json(data.tags), _to_json(data.related_repos),
+             _to_json(data.acceptance_criteria), _to_json(data.blockers), _to_json(data.metadata))
         )
         self.conn.commit()
         return Feature(id=id, project_id=data.project_id, title=data.title,
                       description=data.description, status=data.status,
-                      priority=data.priority, created_at=datetime.fromisoformat(now))
+                      priority=data.priority, created_at=datetime.fromisoformat(now),
+                      assignees=data.assignees, tags=data.tags, related_repos=data.related_repos,
+                      acceptance_criteria=data.acceptance_criteria, blockers=data.blockers,
+                      metadata=data.metadata)
+
+    def create_feature_with_id(self, id: str, project_id: str, title: str,
+                               description: Optional[str] = None,
+                               status: str = "backlog",
+                               priority: str = "medium",
+                               created_at: Optional[str] = None,
+                               started_at: Optional[str] = None,
+                               completed_at: Optional[str] = None,
+                               assignees: Optional[list] = None,
+                               tags: Optional[list] = None,
+                               related_repos: Optional[list] = None,
+                               acceptance_criteria: Optional[list] = None,
+                               blockers: Optional[list] = None,
+                               metadata: Optional[dict] = None) -> Feature:
+        """Create feature with specific ID (for migration)."""
+        now = created_at or self._now()
+        status = _normalize_feature_status(status)
+        self.conn.execute(
+            """INSERT OR REPLACE INTO features (id, project_id, title, description, status, priority,
+               created_at, started_at, completed_at, assignees, tags, related_repos,
+               acceptance_criteria, blockers, metadata)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (id, project_id, title, description, status, priority, now, started_at, completed_at,
+             _to_json(assignees), _to_json(tags), _to_json(related_repos),
+             _to_json(acceptance_criteria), _to_json(blockers), _to_json(metadata))
+        )
+        self.conn.commit()
+        return self.get_feature(id)
 
     def get_feature(self, feature_id: str) -> Optional[Feature]:
         row = self.conn.execute(
@@ -142,13 +234,20 @@ class TrackerDB:
         return None
 
     def _row_to_feature(self, row) -> Feature:
+        status = _normalize_feature_status(row["status"])
         return Feature(
             id=row["id"], project_id=row["project_id"], title=row["title"],
-            description=row["description"], status=FeatureStatus(row["status"]),
-            priority=row["priority"],
+            description=row["description"], status=FeatureStatus(status),
+            priority=Priority(row["priority"]),
             created_at=datetime.fromisoformat(row["created_at"]),
             started_at=datetime.fromisoformat(row["started_at"]) if row["started_at"] else None,
-            completed_at=datetime.fromisoformat(row["completed_at"]) if row["completed_at"] else None
+            completed_at=datetime.fromisoformat(row["completed_at"]) if row["completed_at"] else None,
+            assignees=_from_json(row["assignees"]),
+            tags=_from_json(row["tags"]),
+            related_repos=_from_json(row["related_repos"]),
+            acceptance_criteria=_from_json(row["acceptance_criteria"]),
+            blockers=_from_json(row["blockers"]),
+            metadata=_from_json(row["metadata"]),
         )
 
     def list_features(self, project_id: Optional[str] = None,
@@ -180,12 +279,30 @@ class TrackerDB:
             if data.status == FeatureStatus.IN_PROGRESS:
                 updates.append("started_at = ?")
                 params.append(self._now())
-            elif data.status == FeatureStatus.DONE:
+            elif data.status in (FeatureStatus.DONE, FeatureStatus.COMPLETED):
                 updates.append("completed_at = ?")
                 params.append(self._now())
         if data.priority is not None:
             updates.append("priority = ?")
             params.append(data.priority.value)
+        if data.assignees is not None:
+            updates.append("assignees = ?")
+            params.append(_to_json(data.assignees))
+        if data.tags is not None:
+            updates.append("tags = ?")
+            params.append(_to_json(data.tags))
+        if data.related_repos is not None:
+            updates.append("related_repos = ?")
+            params.append(_to_json(data.related_repos))
+        if data.acceptance_criteria is not None:
+            updates.append("acceptance_criteria = ?")
+            params.append(_to_json(data.acceptance_criteria))
+        if data.blockers is not None:
+            updates.append("blockers = ?")
+            params.append(_to_json(data.blockers))
+        if data.metadata is not None:
+            updates.append("metadata = ?")
+            params.append(_to_json(data.metadata))
 
         if not updates:
             return self.get_feature(feature_id)
@@ -216,15 +333,40 @@ class TrackerDB:
         now = self._now()
 
         self.conn.execute(
-            """INSERT INTO tasks (id, feature_id, title, details, status, complexity, created_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            """INSERT INTO tasks (id, feature_id, title, details, status, priority, complexity,
+               created_at, acceptance_criteria, metadata)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (id, data.feature_id, data.title, data.details,
-             data.status.value, data.complexity.value, now)
+             data.status.value, data.priority.value, data.complexity.value, now,
+             _to_json(data.acceptance_criteria), _to_json(data.metadata))
         )
         self.conn.commit()
         return Task(id=id, feature_id=data.feature_id, title=data.title,
-                   details=data.details, status=data.status,
-                   complexity=data.complexity, created_at=datetime.fromisoformat(now))
+                   details=data.details, status=data.status, priority=data.priority,
+                   complexity=data.complexity, created_at=datetime.fromisoformat(now),
+                   acceptance_criteria=data.acceptance_criteria, metadata=data.metadata)
+
+    def create_task_with_id(self, id: str, feature_id: str, title: str,
+                            details: Optional[str] = None,
+                            status: str = "pending",
+                            priority: str = "medium",
+                            complexity: str = "medium",
+                            created_at: Optional[str] = None,
+                            completed_at: Optional[str] = None,
+                            acceptance_criteria: Optional[list] = None,
+                            metadata: Optional[dict] = None) -> Task:
+        """Create task with specific ID (for migration)."""
+        now = created_at or self._now()
+        status = _normalize_task_status(status)
+        self.conn.execute(
+            """INSERT OR REPLACE INTO tasks (id, feature_id, title, details, status, priority, complexity,
+               created_at, completed_at, acceptance_criteria, metadata)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (id, feature_id, title, details, status, priority, complexity, now, completed_at,
+             _to_json(acceptance_criteria), _to_json(metadata))
+        )
+        self.conn.commit()
+        return self.get_task(id)
 
     def get_task(self, task_id: str) -> Optional[Task]:
         row = self.conn.execute(
@@ -235,12 +377,16 @@ class TrackerDB:
         return None
 
     def _row_to_task(self, row) -> Task:
+        status = _normalize_task_status(row["status"])
         return Task(
             id=row["id"], feature_id=row["feature_id"], title=row["title"],
-            details=row["details"], status=TaskStatus(row["status"]),
-            complexity=row["complexity"],
+            details=row["details"], status=TaskStatus(status),
+            priority=Priority(row["priority"] or "medium"),
+            complexity=Complexity(row["complexity"] or "medium"),
             created_at=datetime.fromisoformat(row["created_at"]),
-            completed_at=datetime.fromisoformat(row["completed_at"]) if row["completed_at"] else None
+            completed_at=datetime.fromisoformat(row["completed_at"]) if row["completed_at"] else None,
+            acceptance_criteria=_from_json(row["acceptance_criteria"]),
+            metadata=_from_json(row["metadata"]),
         )
 
     def list_tasks(self, feature_id: Optional[str] = None,
@@ -269,12 +415,21 @@ class TrackerDB:
         if data.status is not None:
             updates.append("status = ?")
             params.append(data.status.value)
-            if data.status == TaskStatus.DONE:
+            if data.status in (TaskStatus.DONE, TaskStatus.COMPLETED):
                 updates.append("completed_at = ?")
                 params.append(self._now())
+        if data.priority is not None:
+            updates.append("priority = ?")
+            params.append(data.priority.value)
         if data.complexity is not None:
             updates.append("complexity = ?")
             params.append(data.complexity.value)
+        if data.acceptance_criteria is not None:
+            updates.append("acceptance_criteria = ?")
+            params.append(_to_json(data.acceptance_criteria))
+        if data.metadata is not None:
+            updates.append("metadata = ?")
+            params.append(_to_json(data.metadata))
 
         if not updates:
             return self.get_task(task_id)
@@ -285,6 +440,28 @@ class TrackerDB:
         )
         self.conn.commit()
         return self.get_task(task_id)
+
+    # --- Task Dependencies ---
+
+    def add_task_dependency(self, task_id: str, depends_on_id: str) -> bool:
+        """Add a dependency between tasks."""
+        try:
+            self.conn.execute(
+                "INSERT INTO task_dependencies (task_id, depends_on_id) VALUES (?, ?)",
+                (task_id, depends_on_id)
+            )
+            self.conn.commit()
+            return True
+        except sqlite3.IntegrityError:
+            return False
+
+    def get_task_dependencies(self, task_id: str) -> list[str]:
+        """Get IDs of tasks that this task depends on."""
+        rows = self.conn.execute(
+            "SELECT depends_on_id FROM task_dependencies WHERE task_id = ?",
+            (task_id,)
+        ).fetchall()
+        return [r["depends_on_id"] for r in rows]
 
     # --- Notes ---
 
@@ -334,20 +511,21 @@ class TrackerDB:
                 for feat in features:
                     tasks = self.list_tasks(feat.id)
                     task_views = [
-                        TaskView(id=t.id, title=t.title, status=t.status, complexity=t.complexity)
+                        TaskView(id=t.id, title=t.title, status=t.status,
+                                priority=t.priority, complexity=t.complexity)
                         for t in tasks
                     ]
-                    feat_tasks_done = sum(1 for t in tasks if t.status == TaskStatus.DONE)
+                    feat_tasks_done = sum(1 for t in tasks if t.status in (TaskStatus.DONE, TaskStatus.COMPLETED))
 
                     feature_views.append(FeatureView(
                         id=feat.id, title=feat.title, status=feat.status,
-                        priority=feat.priority, task_count=len(tasks),
+                        priority=feat.priority, tags=feat.tags, task_count=len(tasks),
                         tasks_done=feat_tasks_done, tasks=task_views
                     ))
 
                     total_tasks += len(tasks)
                     tasks_done += feat_tasks_done
-                    if feat.status == FeatureStatus.DONE:
+                    if feat.status in (FeatureStatus.DONE, FeatureStatus.COMPLETED):
                         proj_features_done += 1
 
                 project_views.append(ProjectView(

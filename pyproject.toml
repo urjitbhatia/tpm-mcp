@@ -8,8 +8,15 @@ dependencies = [
     "pydantic>=2.0.0",
 ]
 
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+]
+
 [project.scripts]
 tracker-mcp = "tracker_mcp.server:main"
+tracker-migrate = "tracker_mcp.migrate:main"
 
 [build-system]
 requires = ["hatchling"]

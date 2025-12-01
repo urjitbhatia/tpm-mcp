@@ -22,17 +22,24 @@ CREATE TABLE IF NOT EXISTS projects (
     UNIQUE(org_id, name)
 );
 
--- Features are high-level work items
+-- Features are high-level work items (issues, epics, features)
 CREATE TABLE IF NOT EXISTS features (
     id TEXT PRIMARY KEY,
     project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
     title TEXT NOT NULL,
     description TEXT,
-    status TEXT NOT NULL DEFAULT 'backlog' CHECK(status IN ('backlog', 'planned', 'in-progress', 'done', 'blocked')),
+    status TEXT NOT NULL DEFAULT 'backlog' CHECK(status IN ('backlog', 'planned', 'in-progress', 'done', 'blocked', 'completed')),
     priority TEXT NOT NULL DEFAULT 'medium' CHECK(priority IN ('critical', 'high', 'medium', 'low')),
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     started_at TEXT,
-    completed_at TEXT
+    completed_at TEXT,
+    -- Rich metadata fields
+    assignees TEXT,           -- JSON array: ["Staff Engineer", "TPM"]
+    tags TEXT,                -- JSON array: ["slack", "integration", "api"]
+    related_repos TEXT,       -- JSON array: ["pimlico", "web"]
+    acceptance_criteria TEXT, -- JSON array: ["Criteria 1", "Criteria 2"]
+    blockers TEXT,            -- JSON array: ["Blocker 1"]
+    metadata TEXT             -- JSON blob for all other rich data (implementation, architecture, phases, etc.)
 );
 
 -- Tasks are sub-items of features
@@ -41,10 +48,14 @@ CREATE TABLE IF NOT EXISTS tasks (
     feature_id TEXT NOT NULL REFERENCES features(id) ON DELETE CASCADE,
     title TEXT NOT NULL,
     details TEXT,
-    status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'in-progress', 'done', 'blocked')),
+    status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'in-progress', 'done', 'blocked', 'completed')),
+    priority TEXT DEFAULT 'medium' CHECK(priority IN ('critical', 'high', 'medium', 'low')),
     complexity TEXT DEFAULT 'medium' CHECK(complexity IN ('simple', 'medium', 'complex')),
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    completed_at TEXT
+    completed_at TEXT,
+    -- Rich metadata fields
+    acceptance_criteria TEXT, -- JSON array: ["Criteria 1", "Criteria 2"]
+    metadata TEXT             -- JSON blob for files_created, files_modified, test_results, technical_notes, estimated_effort, etc.
 );
 
 -- Task dependencies
