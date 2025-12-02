@@ -6,7 +6,7 @@ from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import Tool, TextContent
 
-from .db import TrackerDB
+from .db import TrackerDB, DEFAULT_DB_PATH
 from .models import (
     OrgCreate, ProjectCreate,
     TicketCreate, TicketUpdate, TicketStatus,
@@ -250,6 +250,12 @@ USE THIS TOOL WHEN:
                 "required": ["org_id", "name"]
             }
         ),
+        # Info tool
+        Tool(
+            name="info",
+            description="Get information about the tracker MCP server: database location, stats, and usage.",
+            inputSchema={"type": "object", "properties": {}}
+        ),
     ]
 
 
@@ -409,6 +415,51 @@ async def _handle_tool(name: str, args: dict) -> str:
                         lines.append(f"    - ... and {len(incomplete) - 5} more")
 
         return "\n".join(lines)
+
+    # Info
+    if name == "info":
+        import os
+        roadmap = db.get_roadmap()
+        db_size = os.path.getsize(DEFAULT_DB_PATH) if DEFAULT_DB_PATH.exists() else 0
+        db_size_mb = db_size / (1024 * 1024)
+
+        info = f"""# Tracker MCP Server
+
+## Database
+- **Location**: `{DEFAULT_DB_PATH}`
+- **Size**: {db_size_mb:.2f} MB
+- **Mode**: SQLite with WAL (concurrent read/write safe)
+
+## Current Stats
+- **Organizations**: {len(roadmap.orgs)}
+- **Projects**: {sum(len(o.projects) for o in roadmap.orgs)}
+- **Tickets**: {roadmap.stats.get('total_tickets', 0)} ({roadmap.stats.get('tickets_done', 0)} done)
+- **Tasks**: {roadmap.stats.get('total_tasks', 0)} ({roadmap.stats.get('tasks_done', 0)} done)
+- **Completion**: {roadmap.stats.get('completion_pct', 0)}%
+
+## Installation
+
+Add to Claude Code with:
+```bash
+claude mcp add tracker --scope user -- uv run --directory /path/to/tracker-mcp tracker-mcp
+```
+
+## Available Tools
+- `roadmap_view` - Get full project roadmap
+- `ticket_create/update/list/get` - Manage tickets (features, issues, epics)
+- `task_create/update/list` - Manage tasks under tickets
+- `note_add` - Add notes to any entity
+- `org_list/create` - Manage organizations
+- `project_list/create` - Manage projects
+- `info` - This info page
+
+## Migration
+To import from JSON project tracker:
+```bash
+uv run python -m tracker_mcp.migrate /path/to/project-tracker
+```
+"""
+        return info
 
     return f"Unknown tool: {name}"
 
