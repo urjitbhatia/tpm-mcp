@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS tickets (
     -- Rich metadata fields
     assignees TEXT,           -- JSON array: ["Staff Engineer", "TPM"]
     tags TEXT,                -- JSON array: ["slack", "integration", "api"]
-    related_repos TEXT,       -- JSON array: ["pimlico", "web"]
+    related_repos TEXT,       -- JSON array: ["testorg", "web"]
     acceptance_criteria TEXT, -- JSON array: ["Criteria 1", "Criteria 2"]
     blockers TEXT,            -- JSON array: ["Blocker 1"]
     metadata TEXT             -- JSON blob for all other rich data (implementation, architecture, phases, etc.)

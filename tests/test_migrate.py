@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from tracker_mcp.db import TrackerDB
-from tracker_mcp.migrate import migrate_from_json, extract_acceptance_criteria, extract_metadata
+from tpm_mcp.db import TrackerDB
+from tpm_mcp.migrate import migrate_from_json, extract_acceptance_criteria, extract_metadata
 
 
 @pytest.fixture
@@ -29,12 +29,12 @@ def db():
 def json_root(tmp_path):
     """Create a mock JSON project tracker structure."""
     # Create directory structure
-    (tmp_path / "orgs" / "pimlico" / "projects" / "backend").mkdir(parents=True)
-    (tmp_path / "orgs" / "pimlico" / "projects" / "frontend").mkdir(parents=True)
+    (tmp_path / "orgs" / "testorg" / "projects" / "backend").mkdir(parents=True)
+    (tmp_path / "orgs" / "testorg" / "projects" / "frontend").mkdir(parents=True)
 
     # Create index.json
     index = {
-        "organizations": ["pimlico"],
+        "organizations": ["testorg"],
         "stats": {"totalFeatures": 3, "totalProjects": 2}
     }
     with open(tmp_path / "index.json", "w") as f:
@@ -42,11 +42,11 @@ def json_root(tmp_path):
 
     # Create org-meta.json
     org_meta = {
-        "name": "Pimlico",
+        "name": "testorg",
         "description": "Test organization",
         "created": "2025-11-26"
     }
-    with open(tmp_path / "orgs" / "pimlico" / "org-meta.json", "w") as f:
+    with open(tmp_path / "orgs" / "testorg" / "org-meta.json", "w") as f:
         json.dump(org_meta, f)
 
     # Create project-meta.json for backend
@@ -56,7 +56,7 @@ def json_root(tmp_path):
         "created": "2025-11-26",
         "repos": [{"name": "backend", "path": "/path/to/backend"}]
     }
-    with open(tmp_path / "orgs" / "pimlico" / "projects" / "backend" / "project-meta.json", "w") as f:
+    with open(tmp_path / "orgs" / "testorg" / "projects" / "backend" / "project-meta.json", "w") as f:
         json.dump(project_meta, f)
 
     # Create roadmap.json for backend
@@ -72,7 +72,7 @@ def json_root(tmp_path):
                 "completed": "2025-11-27",
                 "assignees": ["Staff Engineer"],
                 "tags": ["api", "backend"],
-                "relatedRepos": ["pimlico"],
+                "relatedRepos": ["testorg"],
                 "acceptanceCriteria": ["Criteria 1", "Criteria 2"],
                 "blockers": [],
                 "notes": ["First note", "Second note"],
@@ -134,7 +134,7 @@ def json_root(tmp_path):
             }
         ]
     }
-    with open(tmp_path / "orgs" / "pimlico" / "projects" / "backend" / "roadmap.json", "w") as f:
+    with open(tmp_path / "orgs" / "testorg" / "projects" / "backend" / "roadmap.json", "w") as f:
         json.dump(roadmap, f)
 
     # Create project-meta.json for frontend
@@ -143,7 +143,7 @@ def json_root(tmp_path):
         "description": "Frontend project",
         "created": "2025-11-26"
     }
-    with open(tmp_path / "orgs" / "pimlico" / "projects" / "frontend" / "project-meta.json", "w") as f:
+    with open(tmp_path / "orgs" / "testorg" / "projects" / "frontend" / "project-meta.json", "w") as f:
         json.dump(project_meta, f)
 
     # Create roadmap.json for frontend
@@ -161,7 +161,7 @@ def json_root(tmp_path):
             }
         ]
     }
-    with open(tmp_path / "orgs" / "pimlico" / "projects" / "frontend" / "roadmap.json", "w") as f:
+    with open(tmp_path / "orgs" / "testorg" / "projects" / "frontend" / "roadmap.json", "w") as f:
         json.dump(roadmap, f)
 
     return tmp_path
@@ -209,7 +209,7 @@ class TestMigration:
         assert stats["orgs"] == 1
         orgs = db.list_orgs()
         assert len(orgs) == 1
-        assert orgs[0].name == "Pimlico"
+        assert orgs[0].name == "testorg"
 
     def test_migrate_creates_projects(self, db, json_root):
         stats = migrate_from_json(json_root, db)
@@ -241,7 +241,7 @@ class TestMigration:
         assert "architecture" in ticket1.metadata
 
     def test_migrate_creates_tasks_from_implementation_plan(self, db, json_root):
-        stats = migrate_from_json(json_root, db)
+        _ = migrate_from_json(json_root, db)
 
         # Check tasks from implementationPlan
         task1 = db.get_task("TASK-001-1")
@@ -252,7 +252,7 @@ class TestMigration:
         assert "filesCreated" in task1.metadata
 
     def test_migrate_creates_tasks_from_subtasks(self, db, json_root):
-        stats = migrate_from_json(json_root, db)
+        _ = migrate_from_json(json_root, db)
 
         # Check tasks from subTasks
         subtask1 = db.get_task("SUBTASK-002-1")
@@ -273,7 +273,7 @@ class TestMigration:
 
     def test_migrate_handles_issue_ids(self, db, json_root):
         """Test that ISSUE- prefixed IDs are preserved."""
-        stats = migrate_from_json(json_root, db)
+        _ = migrate_from_json(json_root, db)
 
         issue = db.get_ticket("ISSUE-001")
         assert issue is not None
@@ -282,7 +282,7 @@ class TestMigration:
 
     def test_migrate_handles_nested_acceptance_criteria(self, db, json_root):
         """Test that dict-style acceptanceCriteria is flattened."""
-        stats = migrate_from_json(json_root, db)
+        _ = migrate_from_json(json_root, db)
 
         ticket = db.get_ticket("FEAT-FE-001")
         assert ticket is not None
@@ -308,7 +308,7 @@ class TestMigration:
         assert "Index file not found" in stats["errors"][0]
 
     def test_migrate_handles_project_repo_path(self, db, json_root):
-        stats = migrate_from_json(json_root, db)
+        _ = migrate_from_json(json_root, db)
 
         projects = db.list_projects()
         backend = next(p for p in projects if p.name == "Backend")

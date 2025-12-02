@@ -1,1 +1,1 @@
-"""Tests for tracker-mcp."""
+"""Tests for tpm-mcp."""

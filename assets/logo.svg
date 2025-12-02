@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
+  <defs>
+    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="grad2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#8b5cf6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#a78bfa;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background circle -->
+  <circle cx="60" cy="60" r="56" fill="url(#grad1)" />
+
+  <!-- Clipboard body -->
+  <rect x="32" y="28" width="56" height="68" rx="4" ry="4" fill="white" opacity="0.95"/>
+
+  <!-- Clipboard clip -->
+  <rect x="44" y="22" width="32" height="12" rx="2" ry="2" fill="url(#grad2)"/>
+  <rect x="50" y="26" width="20" height="6" rx="1" ry="1" fill="white"/>
+
+  <!-- Checkmark 1 (completed) -->
+  <circle cx="44" cy="48" r="6" fill="#10b981"/>
+  <path d="M41 48 L43 50 L47 45" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Line 1 -->
+  <rect x="54" y="45" width="26" height="6" rx="2" fill="#e2e8f0"/>
+
+  <!-- Checkmark 2 (completed) -->
+  <circle cx="44" cy="64" r="6" fill="#10b981"/>
+  <path d="M41 64 L43 66 L47 61" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Line 2 -->
+  <rect x="54" y="61" width="20" height="6" rx="2" fill="#e2e8f0"/>
+
+  <!-- In progress circle -->
+  <circle cx="44" cy="80" r="6" fill="url(#grad2)"/>
+  <rect x="42" y="78" width="4" height="4" rx="1" fill="white"/>
+
+  <!-- Line 3 (shorter, in progress) -->
+  <rect x="54" y="77" width="16" height="6" rx="2" fill="#c4b5fd"/>
+
+  <!-- AI sparkle -->
+  <g transform="translate(76, 32)">
+    <path d="M8 0 L9.5 6.5 L16 8 L9.5 9.5 L8 16 L6.5 9.5 L0 8 L6.5 6.5 Z" fill="#fbbf24"/>
+  </g>
+
+  <!-- Small sparkle -->
+  <g transform="translate(68, 44) scale(0.5)">
+    <path d="M8 0 L9.5 6.5 L16 8 L9.5 9.5 L8 16 L6.5 9.5 L0 8 L6.5 6.5 Z" fill="#fbbf24" opacity="0.7"/>
+  </g>
+</svg>

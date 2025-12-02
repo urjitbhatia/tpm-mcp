@@ -1,104 +1,253 @@
-# tracker-mcp
+<p align="center">
+  <img src="assets/logo.svg" alt="tpm-mcp logo" width="120" />
+</p>
 
-Fast local project tracking MCP server with SQLite.
+<h1 align="center">tpm-mcp</h1>
+
+<p align="center">
+  <strong>Your AI-powered Technical Project Manager in a box</strong>
+</p>
+
+<p align="center">
+  <a href="#installation"><img src="https://img.shields.io/badge/uv-compatible-blue?style=flat-square" alt="uv compatible"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green?style=flat-square" alt="MIT License"></a>
+  <a href="#"><img src="https://img.shields.io/badge/python-3.10+-blue?style=flat-square" alt="Python 3.10+"></a>
+  <a href="#"><img src="https://img.shields.io/badge/MCP-server-purple?style=flat-square" alt="MCP Server"></a>
+</p>
+
+<p align="center">
+  <em>Have standups with Claude. Track features. Break down tasks. Ship faster.</em>
+</p>
+
+---
+
+## What is this?
+
+**tpm-mcp** is a local MCP (Model Context Protocol) server that gives Claude the ability to track your projects, features, and tasks. Think of it as having a dedicated TPM who:
+
+- Remembers what you're working on across sessions
+- Breaks down complex features into manageable tasks
+- Tracks progress and blockers
+- Gives you instant status updates
+
+All data stays local in a fast SQLite database. No cloud. No subscriptions. Just you and your AI TPM.
+
+## Demo
+
+```
+You: :TPM: what's in progress?
+
+Claude: Here's your current roadmap:
+
+# Roadmap Summary
+**Stats**: 3/8 tickets, 12/25 tasks (48% complete)
+
+## MyCompany
+### backend-api
+Tickets: 3/5 done
+
+- [~] **FEAT-003**: Payment Integration (high)
+  Tasks: 2/4
+    - [~] TASK-003-1: Stripe webhook handler
+    - [ ] TASK-003-2: Invoice generation
+
+- [ ] **FEAT-004**: Email Notifications
+  Tasks: 0/3
+```
 
 ## Features
 
-- SQLite backend with WAL mode for concurrent access
-- Sub-millisecond queries
-- Full CRUD for orgs, projects, features, and tasks
-- Rich metadata support (tags, assignees, acceptance criteria, etc.)
-- `roadmap_view` for at-a-glance overview
-- Migration tool to import from JSON project tracker
+| | |
+|---|---|
+| **Fast** | Sub-millisecond queries with SQLite + WAL mode |
+| **Local** | All data in `~/.local/share/tpm-mcp/tpm.db` |
+| **Natural** | Just talk - "I finished the auth feature" |
+| **Hierarchical** | Orgs → Projects → Tickets → Tasks |
+| **Rich Metadata** | Priority, tags, assignees, complexity, notes |
+| **Migration** | Import from JSON project trackers |
 
 ## Installation
 
+### 1. Clone & Install
+
 ```bash
-cd tracker-mcp
-uv venv
-uv pip install -e ".[dev]"  # Include dev dependencies for testing
+git clone https://github.com/youruser/tpm-mcp.git
+cd tpm-mcp
+uv venv && uv pip install -e .
 ```
 
-## Claude Code Configuration
+### 2. Add to Claude Code
+
+```bash
+claude mcp add tpm --scope user -- uv run --directory /path/to/tpm-mcp tpm-mcp
+```
+
+<details>
+<summary>Or manually edit settings.json</summary>
 
 Add to `~/.claude/settings.json`:
 
 ```json
 {
   "mcpServers": {
-    "tracker": {
+    "tpm": {
       "command": "uv",
-      "args": ["run", "--directory", "/Users/urjit/code/pimlico/tracker-mcp", "tracker-mcp"]
+      "args": ["run", "--directory", "/path/to/tpm-mcp", "tpm-mcp"]
     }
   }
 }
 ```
 
-## Tools
+</details>
+
+### 3. (Optional) Enable TPM Agent Behavior
+
+For the full experience, add the TPM agent instructions:
+
+```bash
+# Symlink to your project's .claude folder
+mkdir -p .claude
+ln -s /path/to/tpm-mcp/agents/tpm.md .claude/tpm.md
+```
+
+Then in your `CLAUDE.md`:
+```markdown
+See .claude/tpm.md for project tracking workflow.
+```
+
+## Usage
+
+### Quick Commands
+
+| Say this... | Claude will... |
+|------------|----------------|
+| `:TPM: status` | Show full roadmap |
+| `:TPM: add auth feature` | Create a new ticket |
+| `I finished the payment integration` | Mark ticket done |
+| `Break down the API refactor` | Create subtasks |
+| `What's blocking us?` | Show blocked items |
+
+### Workflow Example
+
+```
+You: :TPM: Add user authentication to the backend project
+
+Claude: Created ticket FEAT-005: "User Authentication" in backend-api
+        Status: backlog, Priority: medium
+
+You: Make it high priority and break it down
+
+Claude: Updated FEAT-005 to high priority. Created tasks:
+        - TASK-005-1: Design auth schema
+        - TASK-005-2: Implement JWT middleware
+        - TASK-005-3: Add login/logout endpoints
+        - TASK-005-4: Write auth tests
+
+You: Starting on the JWT middleware
+
+Claude: Marked TASK-005-2 as in-progress.
+        FEAT-005 is now in-progress.
+
+You: Done with middleware, tests pass
+
+Claude: Marked TASK-005-2 as done (1/4 tasks complete)
+```
+
+## Tools Reference
+
+<details>
+<summary><strong>View Tools</strong></summary>
+
+| Tool | Description |
+|------|-------------|
+| `roadmap_view` | Full roadmap with all orgs, projects, tickets, tasks |
+| `ticket_get` | Detailed view of one ticket with its tasks |
+| `info` | Server stats and database info |
+
+</details>
+
+<details>
+<summary><strong>Ticket Tools</strong></summary>
+
+| Tool | Description |
+|------|-------------|
+| `ticket_create` | Create ticket with title, description, priority, tags |
+| `ticket_update` | Update status, priority, assignees, etc. |
+| `ticket_list` | List tickets, filter by project or status |
+
+</details>
+
+<details>
+<summary><strong>Task Tools</strong></summary>
+
+| Tool | Description |
+|------|-------------|
+| `task_create` | Create task under a ticket |
+| `task_update` | Update task status, details, complexity |
+| `task_list` | List tasks, filter by ticket or status |
+
+</details>
+
+<details>
+<summary><strong>Organization Tools</strong></summary>
 
 | Tool | Description |
 |------|-------------|
 | `org_create` | Create organization |
-| `org_list` | List organizations |
+| `org_list` | List all organizations |
 | `project_create` | Create project under org |
 | `project_list` | List projects |
-| `feature_create` | Create feature/epic with tags, assignees, etc. |
-| `feature_list` | List features (filter by project/status) |
-| `feature_update` | Update feature status/priority/metadata |
-| `feature_get` | Get feature with tasks |
-| `task_create` | Create task under feature |
-| `task_list` | List tasks (filter by feature/status) |
-| `task_update` | Update task status |
 | `note_add` | Add note to any entity |
-| `roadmap_view` | Full roadmap at a glance |
 
-## Database Location
+</details>
 
-`~/.local/share/tracker-mcp/tracker.db`
+## Data Model
 
-## Migration from JSON
+```
+Organization
+└── Project
+    └── Ticket (feature/epic/bug)
+        ├── Tasks
+        └── Notes
+```
 
-If you have existing JSON project tracker data:
+**Ticket Statuses**: `backlog` → `planned` → `in-progress` → `done` | `blocked`
+
+**Task Statuses**: `pending` → `in-progress` → `done` | `blocked`
+
+**Priorities**: `critical` > `high` > `medium` > `low`
+
+## Migration
+
+Coming from a JSON-based tracker?
 
 ```bash
-# Run migration
-uv run tracker-migrate /path/to/project-tracker
-
-# Or programmatically
-from tracker_mcp.migrate import migrate_from_json
-from tracker_mcp.db import TrackerDB
-from pathlib import Path
-
-db = TrackerDB()
-stats = migrate_from_json(Path("/path/to/project-tracker"), db)
-print(f"Migrated {stats['features']} features, {stats['tasks']} tasks")
+uv run tpm-migrate /path/to/old-tracker
 ```
 
-## Example Usage
-
-```
-# Create org and project
-mcp__tracker__org_create(name="pimlico")
-mcp__tracker__project_create(org_id="abc123", name="backend")
-
-# Create feature with metadata
-mcp__tracker__feature_create(
-    project_id="xyz",
-    title="Slack Integration",
-    priority="high",
-    tags=["api", "slack"],
-    assignees=["Staff Engineer"]
-)
-
-# Create task
-mcp__tracker__task_create(feature_id="FEAT-abc", title="Implement webhook")
-
-# View roadmap
-mcp__tracker__roadmap_view(format="summary")
-```
-
-## Testing
+## Development
 
 ```bash
+# Install with dev dependencies
+uv pip install -e ".[dev]"
+
+# Run tests
 uv run pytest tests/ -v
 ```
+
+## Why Local?
+
+- **Privacy**: Your project data never leaves your machine
+- **Speed**: SQLite is incredibly fast for this use case
+- **Reliability**: No API rate limits, no outages, works offline
+- **Simplicity**: One database file, easy to backup or sync
+
+## License
+
+MIT - do whatever you want with it.
+
+---
+
+<p align="center">
+  <sub>Built with vibes ✨</sub>
+</p>

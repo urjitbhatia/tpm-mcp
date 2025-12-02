@@ -1,26 +1,20 @@
 [project]
-name = "tracker-mcp"
+name = "tpm-mcp"
 version = "0.1.0"
-description = "Fast local project tracking MCP server with SQLite"
+description = "Fast local Technical Project Manager MCP server with SQLite"
 requires-python = ">=3.10"
-dependencies = [
-    "mcp>=1.0.0",
-    "pydantic>=2.0.0",
-]
+dependencies = ["mcp>=1.0.0", "pydantic>=2.0.0"]
 
 [project.optional-dependencies]
-dev = [
-    "pytest>=8.0.0",
-    "pytest-asyncio>=0.23.0",
-]
+dev = ["pytest>=8.0.0", "pytest-asyncio>=0.23.0"]
 
 [project.scripts]
-tracker-mcp = "tracker_mcp.server:main"
-tracker-migrate = "tracker_mcp.migrate:main"
+tpm-mcp = "tpm_mcp.server:main"
+tpm-migrate = "tpm_mcp.migrate:main"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/tracker_mcp"]
+packages = ["src/tpm_mcp"]

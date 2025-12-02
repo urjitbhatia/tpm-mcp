@@ -1,6 +1,5 @@
 """MCP Server for project tracking."""
 import json
-from typing import Optional
 
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
@@ -441,7 +440,7 @@ async def _handle_tool(name: str, args: dict) -> str:
 
 Add to Claude Code with:
 ```bash
-claude mcp add tracker --scope user -- uv run --directory /path/to/tracker-mcp tracker-mcp
+claude mcp add tracker --scope user -- uv run --directory /path/to/tpm-mcp tpm-mcp
 ```
 
 ## Available Tools
@@ -456,7 +455,7 @@ claude mcp add tracker --scope user -- uv run --directory /path/to/tracker-mcp t
 ## Migration
 To import from JSON project tracker:
 ```bash
-uv run python -m tracker_mcp.migrate /path/to/project-tracker
+uv run python -m tpm_mcp.migrate /path/to/project-tracker
 ```
 """
         return info

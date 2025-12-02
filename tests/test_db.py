@@ -1,12 +1,11 @@
 """Tests for database operations."""
-import json
 import tempfile
 from pathlib import Path
 
 import pytest
 
-from tracker_mcp.db import TrackerDB
-from tracker_mcp.models import (
+from tpm_mcp.db import TrackerDB
+from tpm_mcp.models import (
     OrgCreate, ProjectCreate, TicketCreate, TicketUpdate,
     TaskCreate, TaskUpdate, NoteCreate,
     TicketStatus, TaskStatus, Priority, Complexity
@@ -345,7 +344,7 @@ class TestJsonSerialization:
             }
         }
 
-        ticket = db.create_ticket_with_id(
+        _ = db.create_ticket_with_id(
             id="FEAT-001",
             project_id=project.id,
             title="Test Ticket",
@@ -368,7 +367,7 @@ class TestJsonSerialization:
             "testResults": {"passed": 10, "failed": 0, "coverage": 95.5}
         }
 
-        task = db.create_task_with_id(
+        _ = db.create_task_with_id(
             id="TASK-001-1",
             ticket_id=ticket.id,
             title="Test Task",

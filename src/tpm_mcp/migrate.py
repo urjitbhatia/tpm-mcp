@@ -1,7 +1,7 @@
 """Migration script to import existing JSON project tracker data into SQLite."""
 import json
 from pathlib import Path
-from typing import Any, Optional
+from typing import Optional
 
 from .db import TrackerDB
 from .models import NoteCreate
@@ -114,7 +114,7 @@ def migrate_from_json(json_root: Path, db: TrackerDB) -> dict:
         stats["errors"].append(f"Index file not found: {index_path}")
         return stats
 
-    index = load_json(index_path)
+    _ = load_json(index_path)
 
     # Iterate over organizations
     orgs_dir = json_root / "orgs"

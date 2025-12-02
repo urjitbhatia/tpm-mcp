@@ -828,7 +828,7 @@ wheels = [
 ]
 
 [[package]]
-name = "tracker-mcp"
+name = "tpm-mcp"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [

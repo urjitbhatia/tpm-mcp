@@ -16,7 +16,7 @@ from .models import (
 )
 
 # Default database path
-DEFAULT_DB_PATH = Path.home() / ".local" / "share" / "tracker-mcp" / "tracker.db"
+DEFAULT_DB_PATH = Path.home() / ".local" / "share" / "tpm-mcp" / "tpm.db"
 
 
 def get_db_path() -> Path:
