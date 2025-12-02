@@ -214,8 +214,36 @@ class TrackerDB:
 
     # --- Tickets ---
 
+    def _get_next_ticket_number(self, prefix: str) -> int:
+        """Get the next sequential number for tickets with given prefix."""
+        # Find max existing number for this prefix (e.g., SENTRY-003 -> 3)
+        rows = self.conn.execute(
+            "SELECT id FROM tickets WHERE id LIKE ?", (f"{prefix}-%",)
+        ).fetchall()
+        max_num = 0
+        for row in rows:
+            try:
+                # Extract number after prefix (e.g., "SENTRY-003" -> 3)
+                num_str = row["id"].split("-")[-1]
+                num = int(num_str)
+                max_num = max(max_num, num)
+            except (ValueError, IndexError):
+                continue
+        return max_num + 1
+
     def create_ticket(self, data: TicketCreate) -> Ticket:
-        id = f"TICKET-{self._gen_id()}"
+        if data.id:
+            id = data.id
+        else:
+            # Auto-generate ID: PROJECT_ID-NNN (e.g., SENTRY-001, BACKEND-042)
+            project = self.get_project(data.project_id)
+            if project:
+                # Use project ID uppercased, replace spaces/special chars with nothing
+                prefix = project.id.upper().replace(" ", "").replace("-", "").replace("_", "")
+            else:
+                prefix = "TICKET"
+            next_num = self._get_next_ticket_number(prefix)
+            id = f"{prefix}-{next_num:03d}"
         now = self._now()
         self.conn.execute(
             """INSERT INTO tickets (id, project_id, title, description, status, priority, created_at,

@@ -98,13 +98,14 @@ class TestProjects:
 
 
 class TestTickets:
-    def test_create_ticket(self, db):
+    def test_create_ticket_auto_id(self, db):
+        """Test that auto-generated ticket ID uses project ID as prefix with sequential number."""
         org = db.create_org(OrgCreate(name="Test Org"))
         project = db.create_project(ProjectCreate(org_id=org.id, name="Test Project"))
 
-        ticket = db.create_ticket(TicketCreate(
+        ticket1 = db.create_ticket(TicketCreate(
             project_id=project.id,
-            title="Test Ticket",
+            title="Test Ticket 1",
             description="A test ticket",
             status=TicketStatus.PLANNED,
             priority=Priority.HIGH,
@@ -112,12 +113,34 @@ class TestTickets:
             assignees=["Staff Engineer"]
         ))
 
-        assert ticket.id.startswith("TICKET-")
-        assert ticket.title == "Test Ticket"
-        assert ticket.status == TicketStatus.PLANNED
-        assert ticket.priority == Priority.HIGH
-        assert ticket.tags == ["test", "ticket"]
-        assert ticket.assignees == ["Staff Engineer"]
+        ticket2 = db.create_ticket(TicketCreate(
+            project_id=project.id,
+            title="Test Ticket 2",
+        ))
+
+        # Auto-generated ID should use project ID (uppercased) as prefix with sequential numbers
+        prefix = project.id.upper().replace("-", "").replace("_", "")
+        assert ticket1.id == f"{prefix}-001"
+        assert ticket2.id == f"{prefix}-002"
+        assert ticket1.title == "Test Ticket 1"
+        assert ticket1.status == TicketStatus.PLANNED
+        assert ticket1.priority == Priority.HIGH
+        assert ticket1.tags == ["test", "ticket"]
+        assert ticket1.assignees == ["Staff Engineer"]
+
+    def test_create_ticket_custom_id(self, db):
+        """Test that custom ticket ID is used when provided."""
+        org = db.create_org(OrgCreate(name="Test Org"))
+        project = db.create_project(ProjectCreate(org_id=org.id, name="Test Project"))
+
+        ticket = db.create_ticket(TicketCreate(
+            project_id=project.id,
+            id="FEAT-001",
+            title="Custom ID Ticket",
+        ))
+
+        assert ticket.id == "FEAT-001"
+        assert ticket.title == "Custom ID Ticket"
 
     def test_create_ticket_with_id(self, db):
         org = db.create_org_with_id(id="test-org", name="Test Org")

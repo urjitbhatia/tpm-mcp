@@ -87,6 +87,7 @@ class Ticket(BaseModel):
 class TicketCreate(BaseModel):
     project_id: str
     title: str
+    id: str | None = None  # Optional custom ID (e.g., FEAT-001, ISSUE-002, SENTRY-001)
     description: str | None = None
     status: TicketStatus = TicketStatus.BACKLOG
     priority: Priority = Priority.MEDIUM
