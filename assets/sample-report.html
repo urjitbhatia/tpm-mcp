@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acme Corp Project Status Report</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            line-height: 1.6;
+            color: #1a1a2e;
+            background: #ffffff;
+            padding: 40px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            padding: 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 16px;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.2rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .header .date {
+            font-size: 1rem;
+            opacity: 0.9;
+        }
+
+        .progress-section {
+            background: #f8f9fc;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .progress-section h2 {
+            font-size: 1.1rem;
+            color: #667eea;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .progress-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .progress-item {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+
+        .progress-item .label {
+            font-size: 0.85rem;
+            color: #666;
+            margin-bottom: 8px;
+        }
+
+        .progress-item .stats {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #1a1a2e;
+            margin-bottom: 10px;
+        }
+
+        .progress-item .percentage {
+            font-size: 1rem;
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .progress-bar-container {
+            background: #e8e8f0;
+            border-radius: 10px;
+            height: 12px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .progress-bar {
+            height: 100%;
+            border-radius: 10px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+        }
+
+        .section {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            border: 1px solid #eef0f5;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #f0f0f5;
+        }
+
+        .section-header h2 {
+            font-size: 1.3rem;
+            color: #1a1a2e;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-header .badge {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .subsection {
+            margin-bottom: 20px;
+        }
+
+        .subsection-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .ticket-list {
+            list-style: none;
+        }
+
+        .ticket-item {
+            display: flex;
+            align-items: flex-start;
+            padding: 10px 0;
+            border-bottom: 1px solid #f5f5f8;
+        }
+
+        .ticket-item:last-child {
+            border-bottom: none;
+        }
+
+        .ticket-status {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+            flex-shrink: 0;
+            font-size: 14px;
+        }
+
+        .status-done {
+            background: #d4edda;
+            color: #28a745;
+        }
+
+        .status-progress {
+            background: #fff3cd;
+            color: #ffc107;
+        }
+
+        .status-backlog {
+            background: #e8e8f0;
+            color: #666;
+        }
+
+        .ticket-content {
+            flex: 1;
+        }
+
+        .ticket-id {
+            font-size: 0.75rem;
+            color: #888;
+            font-family: monospace;
+        }
+
+        .ticket-title {
+            font-size: 0.95rem;
+            color: #1a1a2e;
+        }
+
+        .ticket-meta {
+            font-size: 0.8rem;
+            color: #888;
+            margin-top: 4px;
+        }
+
+        .category-group {
+            margin-bottom: 16px;
+        }
+
+        .category-label {
+            font-size: 0.8rem;
+            color: #999;
+            margin-bottom: 8px;
+            padding-left: 36px;
+        }
+
+        .milestone-list {
+            list-style: none;
+        }
+
+        .milestone-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            background: #f8f9fc;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+
+        .milestone-icon {
+            margin-right: 12px;
+            font-size: 1.2rem;
+        }
+
+        .milestone-text {
+            font-size: 0.95rem;
+            color: #1a1a2e;
+        }
+
+        .blocker-section {
+            background: #fff8f0;
+            border: 1px solid #ffe0b0;
+        }
+
+        .blocker-section .section-header h2 {
+            color: #e67e22;
+        }
+
+        .blocker-item {
+            display: flex;
+            align-items: flex-start;
+            padding: 12px 16px;
+            background: white;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border-left: 3px solid #e67e22;
+        }
+
+        .blocker-item .icon {
+            margin-right: 12px;
+            font-size: 1.1rem;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: #888;
+            font-size: 0.85rem;
+            margin-top: 30px;
+            border-top: 1px solid #eee;
+        }
+
+        @media print {
+            body {
+                padding: 20px;
+            }
+            .section {
+                break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Acme Corp Project Status</h1>
+        <div class="date">December 2, 2025</div>
+    </div>
+
+    <div class="progress-section">
+        <h2>Overall Progress</h2>
+        <div class="progress-grid">
+            <div class="progress-item">
+                <div class="label">Tickets Completed</div>
+                <div class="stats">12 / 18</div>
+                <div class="percentage">67% Complete</div>
+                <div class="progress-bar-container">
+                    <div class="progress-bar" style="width: 67%"></div>
+                </div>
+            </div>
+            <div class="progress-item">
+                <div class="label">Tasks Completed</div>
+                <div class="stats">28 / 45</div>
+                <div class="percentage">62% Complete</div>
+                <div class="progress-bar-container">
+                    <div class="progress-bar" style="width: 62%"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-header">
+            <h2>Backend API</h2>
+            <span class="badge">8 / 12 Done</span>
+        </div>
+
+        <div class="subsection">
+            <div class="subsection-title">Completed</div>
+
+            <div class="category-group">
+                <div class="category-label">Authentication & Security</div>
+                <ul class="ticket-list">
+                    <li class="ticket-item">
+                        <span class="ticket-status status-done">&#10003;</span>
+                        <div class="ticket-content">
+                            <span class="ticket-id">FEAT-001</span>
+                            <div class="ticket-title">User authentication with OAuth 2.0</div>
+                        </div>
+                    </li>
+                    <li class="ticket-item">
+                        <span class="ticket-status status-done">&#10003;</span>
+                        <div class="ticket-content">
+                            <span class="ticket-id">FEAT-002</span>
+                            <div class="ticket-title">Role-based access control</div>
+                        </div>
+                    </li>
+                    <li class="ticket-item">
+                        <span class="ticket-status status-done">&#10003;</span>
+                        <div class="ticket-content">
+                            <span class="ticket-id">FEAT-008</span>
+                            <div class="ticket-title">API rate limiting</div>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="category-group">
+                <div class="category-label">Core Features</div>
+                <ul class="ticket-list">
+                    <li class="ticket-item">
+                        <span class="ticket-status status-done">&#10003;</span>
+                        <div class="ticket-content">
+                            <span class="ticket-id">FEAT-003</span>
+                            <div class="ticket-title">RESTful API endpoints for resources</div>
+                        </div>
+                    </li>
+                    <li class="ticket-item">
+                        <span class="ticket-status status-done">&#10003;</span>
+                        <div class="ticket-content">
+                            <span class="ticket-id">FEAT-004</span>
+                            <div class="ticket-title">Database schema and migrations</div>
+                        </div>
+                    </li>
+                    <li class="ticket-item">
+                        <span class="ticket-status status-done">&#10003;</span>
+                        <div class="ticket-content">
+                            <span class="ticket-id">FEAT-005</span>
+                            <div class="ticket-title">File upload and storage system</div>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="category-group">
+                <div class="category-label">Infrastructure</div>
+                <ul class="ticket-list">
+                    <li class="ticket-item">
+                        <span class="ticket-status status-done">&#10003;</span>
+                        <div class="ticket-content">
+                            <span class="ticket-id">FEAT-006</span>
+                            <div class="ticket-title">CI/CD pipeline setup</div>
+                        </div>
+                    </li>
+                    <li class="ticket-item">
+                        <span class="ticket-status status-done">&#10003;</span>
+                        <div class="ticket-content">
+                            <span class="ticket-id">FEAT-007</span>
+                            <div class="ticket-title">Logging and monitoring integration</div>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="subsection">
+            <div class="subsection-title">In Progress</div>
+            <ul class="ticket-list">
+                <li class="ticket-item">
+                    <span class="ticket-status status-progress">&#9679;</span>
+                    <div class="ticket-content">
+                        <span class="ticket-id">FEAT-009</span>
+                        <div class="ticket-title">Payment processing integration</div>
+                        <div class="ticket-meta">3/5 subtasks completed</div>
+                    </div>
+                </li>
+                <li class="ticket-item">
+                    <span class="ticket-status status-progress">&#9679;</span>
+                    <div class="ticket-content">
+                        <span class="ticket-id">FEAT-010</span>
+                        <div class="ticket-title">Email notification service</div>
+                        <div class="ticket-meta">2/4 subtasks completed</div>
+                    </div>
+                </li>
+            </ul>
+        </div>
+
+        <div class="subsection">
+            <div class="subsection-title">High Priority Backlog</div>
+            <ul class="ticket-list">
+                <li class="ticket-item">
+                    <span class="ticket-status status-backlog">&#9675;</span>
+                    <div class="ticket-content">
+                        <span class="ticket-id">FEAT-011</span>
+                        <div class="ticket-title">Webhook system for integrations</div>
+                    </div>
+                </li>
+                <li class="ticket-item">
+                    <span class="ticket-status status-backlog">&#9675;</span>
+                    <div class="ticket-content">
+                        <span class="ticket-id">FEAT-012</span>
+                        <div class="ticket-title">API versioning strategy</div>
+                    </div>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-header">
+            <h2>Frontend App</h2>
+            <span class="badge">4 / 6 Done</span>
+        </div>
+
+        <div class="subsection">
+            <div class="subsection-title">Completed</div>
+            <ul class="ticket-list">
+                <li class="ticket-item">
+                    <span class="ticket-status status-done">&#10003;</span>
+                    <div class="ticket-content">
+                        <span class="ticket-id">FEAT-FE-001</span>
+                        <div class="ticket-title">Design system and component library</div>
+                    </div>
+                </li>
+                <li class="ticket-item">
+                    <span class="ticket-status status-done">&#10003;</span>
+                    <div class="ticket-content">
+                        <span class="ticket-id">FEAT-FE-002</span>
+                        <div class="ticket-title">User authentication flows</div>
+                    </div>
+                </li>
+                <li class="ticket-item">
+                    <span class="ticket-status status-done">&#10003;</span>
+                    <div class="ticket-content">
+                        <span class="ticket-id">FEAT-FE-003</span>
+                        <div class="ticket-title">Dashboard and analytics views</div>
+                    </div>
+                </li>
+                <li class="ticket-item">
+                    <span class="ticket-status status-done">&#10003;</span>
+                    <div class="ticket-content">
+                        <span class="ticket-id">FEAT-FE-004</span>
+                        <div class="ticket-title">Responsive mobile layout</div>
+                    </div>
+                </li>
+            </ul>
+        </div>
+
+        <div class="subsection">
+            <div class="subsection-title">In Progress</div>
+            <ul class="ticket-list">
+                <li class="ticket-item">
+                    <span class="ticket-status status-progress">&#9679;</span>
+                    <div class="ticket-content">
+                        <span class="ticket-id">FEAT-FE-005</span>
+                        <div class="ticket-title">Settings and preferences panel</div>
+                        <div class="ticket-meta">1/3 subtasks completed</div>
+                    </div>
+                </li>
+            </ul>
+        </div>
+
+        <div class="subsection">
+            <div class="subsection-title">Backlog</div>
+            <ul class="ticket-list">
+                <li class="ticket-item">
+                    <span class="ticket-status status-backlog">&#9675;</span>
+                    <div class="ticket-content">
+                        <span class="ticket-id">FEAT-FE-006</span>
+                        <div class="ticket-title">Dark mode theme</div>
+                        <div class="ticket-meta">Enhancement</div>
+                    </div>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-header">
+            <h2>Key Milestones</h2>
+        </div>
+        <ul class="milestone-list">
+            <li class="milestone-item">
+                <span class="milestone-icon" style="color: #28a745;">&#10003;</span>
+                <span class="milestone-text">Authentication system live in production</span>
+            </li>
+            <li class="milestone-item">
+                <span class="milestone-icon" style="color: #28a745;">&#10003;</span>
+                <span class="milestone-text">Core API endpoints deployed and tested</span>
+            </li>
+            <li class="milestone-item">
+                <span class="milestone-icon" style="color: #28a745;">&#10003;</span>
+                <span class="milestone-text">Frontend design system completed</span>
+            </li>
+            <li class="milestone-item">
+                <span class="milestone-icon" style="color: #ffc107;">&#9679;</span>
+                <span class="milestone-text">Payment integration in final testing</span>
+            </li>
+            <li class="milestone-item">
+                <span class="milestone-icon" style="color: #667eea;">&#9675;</span>
+                <span class="milestone-text">Public beta launch</span>
+            </li>
+        </ul>
+    </div>
+
+    <div class="section blocker-section">
+        <div class="section-header">
+            <h2>Blockers & Risks</h2>
+        </div>
+        <div class="blocker-item">
+            <span class="icon">&#9888;</span>
+            <div>
+                <strong>FEAT-009:</strong> Awaiting payment provider API credentials (external dependency)
+            </div>
+        </div>
+        <div class="blocker-item">
+            <span class="icon">&#9888;</span>
+            <div>
+                <strong>FEAT-011:</strong> Webhook security review pending - scheduled for next sprint
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        Generated: December 2, 2025 | Acme Corp
+    </div>
+</body>
+</html>
