@@ -1,8 +1,10 @@
 """Pydantic models for project tracking."""
+
 import json
 from datetime import datetime
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 
@@ -51,98 +53,98 @@ class Project(BaseModel):
     id: str
     org_id: str
     name: str
-    repo_path: Optional[str] = None
-    description: Optional[str] = None
+    repo_path: str | None = None
+    description: str | None = None
     created_at: datetime
 
 
 class ProjectCreate(BaseModel):
     org_id: str
     name: str
-    repo_path: Optional[str] = None
-    description: Optional[str] = None
+    repo_path: str | None = None
+    description: str | None = None
 
 
 class Ticket(BaseModel):
     id: str
     project_id: str
     title: str
-    description: Optional[str] = None
+    description: str | None = None
     status: TicketStatus = TicketStatus.BACKLOG
     priority: Priority = Priority.MEDIUM
     created_at: datetime
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
     # Rich metadata fields
-    assignees: Optional[list[str]] = None
-    tags: Optional[list[str]] = None
-    related_repos: Optional[list[str]] = None
-    acceptance_criteria: Optional[list[str]] = None
-    blockers: Optional[list[str]] = None
-    metadata: Optional[dict[str, Any]] = None  # All other rich data
+    assignees: list[str] | None = None
+    tags: list[str] | None = None
+    related_repos: list[str] | None = None
+    acceptance_criteria: list[str] | None = None
+    blockers: list[str] | None = None
+    metadata: dict[str, Any] | None = None  # All other rich data
 
 
 class TicketCreate(BaseModel):
     project_id: str
     title: str
-    description: Optional[str] = None
+    description: str | None = None
     status: TicketStatus = TicketStatus.BACKLOG
     priority: Priority = Priority.MEDIUM
-    assignees: Optional[list[str]] = None
-    tags: Optional[list[str]] = None
-    related_repos: Optional[list[str]] = None
-    acceptance_criteria: Optional[list[str]] = None
-    blockers: Optional[list[str]] = None
-    metadata: Optional[dict[str, Any]] = None
+    assignees: list[str] | None = None
+    tags: list[str] | None = None
+    related_repos: list[str] | None = None
+    acceptance_criteria: list[str] | None = None
+    blockers: list[str] | None = None
+    metadata: dict[str, Any] | None = None
 
 
 class TicketUpdate(BaseModel):
-    title: Optional[str] = None
-    description: Optional[str] = None
-    status: Optional[TicketStatus] = None
-    priority: Optional[Priority] = None
-    assignees: Optional[list[str]] = None
-    tags: Optional[list[str]] = None
-    related_repos: Optional[list[str]] = None
-    acceptance_criteria: Optional[list[str]] = None
-    blockers: Optional[list[str]] = None
-    metadata: Optional[dict[str, Any]] = None
+    title: str | None = None
+    description: str | None = None
+    status: TicketStatus | None = None
+    priority: Priority | None = None
+    assignees: list[str] | None = None
+    tags: list[str] | None = None
+    related_repos: list[str] | None = None
+    acceptance_criteria: list[str] | None = None
+    blockers: list[str] | None = None
+    metadata: dict[str, Any] | None = None
 
 
 class Task(BaseModel):
     id: str
     ticket_id: str
     title: str
-    details: Optional[str] = None
+    details: str | None = None
     status: TaskStatus = TaskStatus.PENDING
     priority: Priority = Priority.MEDIUM
     complexity: Complexity = Complexity.MEDIUM
     created_at: datetime
-    completed_at: Optional[datetime] = None
+    completed_at: datetime | None = None
     # Rich metadata fields
-    acceptance_criteria: Optional[list[str]] = None
-    metadata: Optional[dict[str, Any]] = None  # files_created, files_modified, test_results, etc.
+    acceptance_criteria: list[str] | None = None
+    metadata: dict[str, Any] | None = None  # files_created, files_modified, test_results, etc.
 
 
 class TaskCreate(BaseModel):
     ticket_id: str
     title: str
-    details: Optional[str] = None
+    details: str | None = None
     status: TaskStatus = TaskStatus.PENDING
     priority: Priority = Priority.MEDIUM
     complexity: Complexity = Complexity.MEDIUM
-    acceptance_criteria: Optional[list[str]] = None
-    metadata: Optional[dict[str, Any]] = None
+    acceptance_criteria: list[str] | None = None
+    metadata: dict[str, Any] | None = None
 
 
 class TaskUpdate(BaseModel):
-    title: Optional[str] = None
-    details: Optional[str] = None
-    status: Optional[TaskStatus] = None
-    priority: Optional[Priority] = None
-    complexity: Optional[Complexity] = None
-    acceptance_criteria: Optional[list[str]] = None
-    metadata: Optional[dict[str, Any]] = None
+    title: str | None = None
+    details: str | None = None
+    status: TaskStatus | None = None
+    priority: Priority | None = None
+    complexity: Complexity | None = None
+    acceptance_criteria: list[str] | None = None
+    metadata: dict[str, Any] | None = None
 
 
 class Note(BaseModel):
@@ -173,7 +175,7 @@ class TicketView(BaseModel):
     title: str
     status: TicketStatus
     priority: Priority
-    tags: Optional[list[str]] = None
+    tags: list[str] | None = None
     task_count: int = 0
     tasks_done: int = 0
     tasks: list[TaskView] = Field(default_factory=list)
@@ -182,7 +184,7 @@ class TicketView(BaseModel):
 class ProjectView(BaseModel):
     id: str
     name: str
-    description: Optional[str] = None
+    description: str | None = None
     ticket_count: int = 0
     tickets_done: int = 0
     tickets: list[TicketView] = Field(default_factory=list)
@@ -196,19 +198,20 @@ class OrgView(BaseModel):
 
 class RoadmapView(BaseModel):
     """Full roadmap at a glance."""
+
     orgs: list[OrgView] = Field(default_factory=list)
     stats: dict = Field(default_factory=dict)
 
 
 # Helper functions for JSON serialization
-def to_json_str(value: Any) -> Optional[str]:
+def to_json_str(value: Any) -> str | None:
     """Convert a value to JSON string for storage."""
     if value is None:
         return None
     return json.dumps(value)
 
 
-def from_json_str(value: Optional[str]) -> Any:
+def from_json_str(value: str | None) -> Any:
     """Parse a JSON string from storage."""
     if value is None:
         return None

@@ -1,16 +1,24 @@
 """MCP Server for project tracking."""
+
 import json
 
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
-from mcp.types import Tool, TextContent
+from mcp.types import TextContent, Tool
 
-from .db import TrackerDB, DEFAULT_DB_PATH
+from .db import DEFAULT_DB_PATH, TrackerDB
 from .models import (
-    OrgCreate, ProjectCreate,
-    TicketCreate, TicketUpdate, TicketStatus,
-    TaskCreate, TaskUpdate, TaskStatus,
-    NoteCreate, Priority, Complexity,
+    Complexity,
+    NoteCreate,
+    OrgCreate,
+    Priority,
+    ProjectCreate,
+    TaskCreate,
+    TaskStatus,
+    TaskUpdate,
+    TicketCreate,
+    TicketStatus,
+    TicketUpdate,
 )
 
 # Initialize server and database
@@ -26,6 +34,7 @@ def _json(obj) -> str:
 
 
 # --- Tool Definitions ---
+
 
 @server.list_tools()
 async def list_tools() -> list[Tool]:
@@ -49,11 +58,17 @@ This replaces the project-tracking-pm agent. Returns all organizations, projects
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "org_id": {"type": "string", "description": "Filter by organization ID (optional)"},
-                    "format": {"type": "string", "enum": ["json", "summary"],
-                              "description": "Output format: 'json' for full data, 'summary' for readable overview (default: summary)"}
-                }
-            }
+                    "org_id": {
+                        "type": "string",
+                        "description": "Filter by organization ID (optional)",
+                    },
+                    "format": {
+                        "type": "string",
+                        "enum": ["json", "summary"],
+                        "description": "Output format: 'json' for full data, 'summary' for readable overview (default: summary)",
+                    },
+                },
+            },
         ),
         # Ticket operations
         Tool(
@@ -72,18 +87,38 @@ Use roadmap_view first to get the project_id. Tickets are high-level work items 
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "project_id": {"type": "string", "description": "Project ID (use project_list to find)"},
+                    "project_id": {
+                        "type": "string",
+                        "description": "Project ID (use project_list to find)",
+                    },
                     "title": {"type": "string", "description": "Ticket title"},
-                    "description": {"type": "string", "description": "Detailed description of the ticket"},
-                    "status": {"type": "string", "enum": ["backlog", "planned", "in-progress", "done", "blocked"],
-                             "description": "Ticket status (default: backlog)"},
-                    "priority": {"type": "string", "enum": ["critical", "high", "medium", "low"],
-                                "description": "Priority level (default: medium)"},
-                    "tags": {"type": "array", "items": {"type": "string"}, "description": "Tags for categorization"},
-                    "assignees": {"type": "array", "items": {"type": "string"}, "description": "Who is working on this"}
+                    "description": {
+                        "type": "string",
+                        "description": "Detailed description of the ticket",
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": ["backlog", "planned", "in-progress", "done", "blocked"],
+                        "description": "Ticket status (default: backlog)",
+                    },
+                    "priority": {
+                        "type": "string",
+                        "enum": ["critical", "high", "medium", "low"],
+                        "description": "Priority level (default: medium)",
+                    },
+                    "tags": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Tags for categorization",
+                    },
+                    "assignees": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Who is working on this",
+                    },
                 },
-                "required": ["project_id", "title"]
-            }
+                "required": ["project_id", "title"],
+            },
         ),
         Tool(
             name="ticket_update",
@@ -104,15 +139,29 @@ Use roadmap_view first to find the ticket_id.""",
                     "ticket_id": {"type": "string", "description": "Ticket ID (e.g., FEAT-001)"},
                     "title": {"type": "string", "description": "New title"},
                     "description": {"type": "string", "description": "New description"},
-                    "status": {"type": "string", "enum": ["backlog", "planned", "in-progress", "done", "blocked"],
-                             "description": "New status"},
-                    "priority": {"type": "string", "enum": ["critical", "high", "medium", "low"],
-                                "description": "New priority"},
-                    "tags": {"type": "array", "items": {"type": "string"}, "description": "Updated tags"},
-                    "assignees": {"type": "array", "items": {"type": "string"}, "description": "Updated assignees"}
+                    "status": {
+                        "type": "string",
+                        "enum": ["backlog", "planned", "in-progress", "done", "blocked"],
+                        "description": "New status",
+                    },
+                    "priority": {
+                        "type": "string",
+                        "enum": ["critical", "high", "medium", "low"],
+                        "description": "New priority",
+                    },
+                    "tags": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Updated tags",
+                    },
+                    "assignees": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Updated assignees",
+                    },
                 },
-                "required": ["ticket_id"]
-            }
+                "required": ["ticket_id"],
+            },
         ),
         Tool(
             name="ticket_list",
@@ -121,21 +170,48 @@ Use roadmap_view first to find the ticket_id.""",
                 "type": "object",
                 "properties": {
                     "project_id": {"type": "string", "description": "Filter by project ID"},
-                    "status": {"type": "string", "enum": ["backlog", "planned", "in-progress", "done", "blocked"],
-                             "description": "Filter by status"}
-                }
-            }
+                    "status": {
+                        "type": "string",
+                        "enum": ["backlog", "planned", "in-progress", "done", "blocked"],
+                        "description": "Filter by status",
+                    },
+                },
+            },
         ),
         Tool(
             name="ticket_get",
-            description="PROJECT MANAGEMENT: Get detailed info about a specific ticket including all its tasks.",
+            description="""PROJECT MANAGEMENT: Get info about a ticket and its tasks.
+
+IMPORTANT: Do NOT pass detail='full' unless explicitly asked for full/all details. The default 'summary' is sufficient for most queries. Only use 'full' when user specifically asks for implementation details, metadata, or complete task information.""",
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "ticket_id": {"type": "string", "description": "Ticket ID (e.g., FEAT-001)"}
+                    "ticket_id": {"type": "string", "description": "Ticket ID (e.g., FEAT-001)"},
+                    "detail": {
+                        "type": "string",
+                        "enum": ["minimal", "summary", "full"],
+                        "description": "OMIT this param for most requests (defaults to 'summary'). Only use 'full' if user explicitly asks for all details/metadata.",
+                        "default": "summary",
+                    },
                 },
-                "required": ["ticket_id"]
-            }
+                "required": ["ticket_id"],
+            },
+        ),
+        Tool(
+            name="task_get",
+            description="""PROJECT MANAGEMENT: Get full details of ONE specific task.
+
+Use this to drill into a single task's implementation details (metadata, files_to_modify, technical_notes). Prefer ticket_get for overview, use this only when you need deep task details.""",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "task_id": {
+                        "type": "string",
+                        "description": "Task ID (e.g., SUBTASK-007-1 or TASK-abc123-1)",
+                    }
+                },
+                "required": ["task_id"],
+            },
         ),
         # Task operations
         Tool(
@@ -151,16 +227,28 @@ USE THIS TOOL WHEN:
                 "properties": {
                     "ticket_id": {"type": "string", "description": "Parent ticket ID"},
                     "title": {"type": "string", "description": "Task title"},
-                    "details": {"type": "string", "description": "Task details/implementation notes"},
-                    "status": {"type": "string", "enum": ["pending", "in-progress", "done", "blocked"],
-                             "description": "Task status (default: pending)"},
-                    "priority": {"type": "string", "enum": ["critical", "high", "medium", "low"],
-                                "description": "Priority (default: medium)"},
-                    "complexity": {"type": "string", "enum": ["simple", "medium", "complex"],
-                                  "description": "Complexity estimate (default: medium)"}
+                    "details": {
+                        "type": "string",
+                        "description": "Task details/implementation notes",
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": ["pending", "in-progress", "done", "blocked"],
+                        "description": "Task status (default: pending)",
+                    },
+                    "priority": {
+                        "type": "string",
+                        "enum": ["critical", "high", "medium", "low"],
+                        "description": "Priority (default: medium)",
+                    },
+                    "complexity": {
+                        "type": "string",
+                        "enum": ["simple", "medium", "complex"],
+                        "description": "Complexity estimate (default: medium)",
+                    },
                 },
-                "required": ["ticket_id", "title"]
-            }
+                "required": ["ticket_id", "title"],
+            },
         ),
         Tool(
             name="task_update",
@@ -171,15 +259,24 @@ USE THIS TOOL WHEN:
                     "task_id": {"type": "string", "description": "Task ID (e.g., TASK-001-1)"},
                     "title": {"type": "string", "description": "New title"},
                     "details": {"type": "string", "description": "New details"},
-                    "status": {"type": "string", "enum": ["pending", "in-progress", "done", "blocked"],
-                             "description": "New status"},
-                    "priority": {"type": "string", "enum": ["critical", "high", "medium", "low"],
-                                "description": "New priority"},
-                    "complexity": {"type": "string", "enum": ["simple", "medium", "complex"],
-                                  "description": "New complexity"}
+                    "status": {
+                        "type": "string",
+                        "enum": ["pending", "in-progress", "done", "blocked"],
+                        "description": "New status",
+                    },
+                    "priority": {
+                        "type": "string",
+                        "enum": ["critical", "high", "medium", "low"],
+                        "description": "New priority",
+                    },
+                    "complexity": {
+                        "type": "string",
+                        "enum": ["simple", "medium", "complex"],
+                        "description": "New complexity",
+                    },
                 },
-                "required": ["task_id"]
-            }
+                "required": ["task_id"],
+            },
         ),
         Tool(
             name="task_list",
@@ -188,10 +285,13 @@ USE THIS TOOL WHEN:
                 "type": "object",
                 "properties": {
                     "ticket_id": {"type": "string", "description": "Filter by ticket ID"},
-                    "status": {"type": "string", "enum": ["pending", "in-progress", "done", "blocked"],
-                             "description": "Filter by status"}
-                }
-            }
+                    "status": {
+                        "type": "string",
+                        "enum": ["pending", "in-progress", "done", "blocked"],
+                        "description": "Filter by status",
+                    },
+                },
+            },
         ),
         # Notes
         Tool(
@@ -200,30 +300,31 @@ USE THIS TOOL WHEN:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "entity_type": {"type": "string", "enum": ["org", "project", "ticket", "task"],
-                                   "description": "Type of entity"},
+                    "entity_type": {
+                        "type": "string",
+                        "enum": ["org", "project", "ticket", "task"],
+                        "description": "Type of entity",
+                    },
                     "entity_id": {"type": "string", "description": "ID of the entity"},
-                    "content": {"type": "string", "description": "Note content"}
+                    "content": {"type": "string", "description": "Note content"},
                 },
-                "required": ["entity_type", "entity_id", "content"]
-            }
+                "required": ["entity_type", "entity_id", "content"],
+            },
         ),
         # Org/Project operations (less frequently used)
         Tool(
             name="org_list",
             description="PROJECT MANAGEMENT: List all organizations. Usually only one org exists.",
-            inputSchema={"type": "object", "properties": {}}
+            inputSchema={"type": "object", "properties": {}},
         ),
         Tool(
             name="org_create",
             description="PROJECT MANAGEMENT: Create a new organization (rarely needed).",
             inputSchema={
                 "type": "object",
-                "properties": {
-                    "name": {"type": "string", "description": "Organization name"}
-                },
-                "required": ["name"]
-            }
+                "properties": {"name": {"type": "string", "description": "Organization name"}},
+                "required": ["name"],
+            },
         ),
         Tool(
             name="project_list",
@@ -232,8 +333,8 @@ USE THIS TOOL WHEN:
                 "type": "object",
                 "properties": {
                     "org_id": {"type": "string", "description": "Filter by organization ID"}
-                }
-            }
+                },
+            },
         ),
         Tool(
             name="project_create",
@@ -244,21 +345,22 @@ USE THIS TOOL WHEN:
                     "org_id": {"type": "string", "description": "Organization ID"},
                     "name": {"type": "string", "description": "Project name"},
                     "repo_path": {"type": "string", "description": "Path to git repo"},
-                    "description": {"type": "string", "description": "Project description"}
+                    "description": {"type": "string", "description": "Project description"},
                 },
-                "required": ["org_id", "name"]
-            }
+                "required": ["org_id", "name"],
+            },
         ),
         # Info tool
         Tool(
             name="info",
             description="Get information about the tracker MCP server: database location, stats, and usage.",
-            inputSchema={"type": "object", "properties": {}}
+            inputSchema={"type": "object", "properties": {}},
         ),
     ]
 
 
 # --- Tool Handlers ---
+
 
 @server.call_tool()
 async def call_tool(name: str, arguments: dict) -> list[TextContent]:
@@ -281,12 +383,14 @@ async def _handle_tool(name: str, args: dict) -> str:
 
     # Projects
     if name == "project_create":
-        project = db.create_project(ProjectCreate(
-            org_id=args["org_id"],
-            name=args["name"],
-            repo_path=args.get("repo_path"),
-            description=args.get("description")
-        ))
+        project = db.create_project(
+            ProjectCreate(
+                org_id=args["org_id"],
+                name=args["name"],
+                repo_path=args.get("repo_path"),
+                description=args.get("description"),
+            )
+        )
         return f"Created project: {_json(project)}"
 
     if name == "project_list":
@@ -295,15 +399,17 @@ async def _handle_tool(name: str, args: dict) -> str:
 
     # Tickets
     if name == "ticket_create":
-        ticket = db.create_ticket(TicketCreate(
-            project_id=args["project_id"],
-            title=args["title"],
-            description=args.get("description"),
-            status=TicketStatus(args.get("status", "backlog")),
-            priority=Priority(args.get("priority", "medium")),
-            tags=args.get("tags"),
-            assignees=args.get("assignees")
-        ))
+        ticket = db.create_ticket(
+            TicketCreate(
+                project_id=args["project_id"],
+                title=args["title"],
+                description=args.get("description"),
+                status=TicketStatus(args.get("status", "backlog")),
+                priority=Priority(args.get("priority", "medium")),
+                tags=args.get("tags"),
+                assignees=args.get("assignees"),
+            )
+        )
         return f"Created ticket: {_json(ticket)}"
 
     if name == "ticket_list":
@@ -318,7 +424,7 @@ async def _handle_tool(name: str, args: dict) -> str:
             status=TicketStatus(args["status"]) if args.get("status") else None,
             priority=Priority(args["priority"]) if args.get("priority") else None,
             tags=args.get("tags"),
-            assignees=args.get("assignees")
+            assignees=args.get("assignees"),
         )
         ticket = db.update_ticket(args["ticket_id"], update)
         if ticket:
@@ -329,22 +435,76 @@ async def _handle_tool(name: str, args: dict) -> str:
         ticket = db.get_ticket(args["ticket_id"])
         if not ticket:
             return f"Ticket {args['ticket_id']} not found"
+
+        detail = args.get("detail", "summary")
         tasks = db.list_tasks(args["ticket_id"])
-        return _json({
-            "ticket": ticket.model_dump(),
-            "tasks": [t.model_dump() for t in tasks]
-        })
+
+        if detail == "minimal":
+            # Just the essentials - very small response
+            return _json(
+                {
+                    "ticket": {
+                        "id": ticket.id,
+                        "title": ticket.title,
+                        "status": ticket.status.value,
+                        "priority": ticket.priority.value,
+                        "task_count": len(tasks),
+                        "tasks_done": sum(
+                            1 for t in tasks if t.status.value in ("done", "completed")
+                        ),
+                    }
+                }
+            )
+        elif detail == "full":
+            # Everything - can be large
+            return _json({"ticket": ticket.model_dump(), "tasks": [t.model_dump() for t in tasks]})
+        else:
+            # summary (default) - balanced response
+            desc = ticket.description
+            if desc and len(desc) > 300:
+                desc = desc[:300] + "..."
+            return _json(
+                {
+                    "ticket": {
+                        "id": ticket.id,
+                        "title": ticket.title,
+                        "description": desc,
+                        "status": ticket.status.value,
+                        "priority": ticket.priority.value,
+                        "tags": ticket.tags,
+                        "assignees": ticket.assignees,
+                        "acceptance_criteria": ticket.acceptance_criteria,
+                    },
+                    "tasks": [
+                        {
+                            "id": t.id,
+                            "title": t.title,
+                            "status": t.status.value,
+                            "priority": t.priority.value,
+                        }
+                        for t in tasks
+                    ],
+                }
+            )
+
+    if name == "task_get":
+        task = db.get_task(args["task_id"])
+        if not task:
+            return f"Task {args['task_id']} not found"
+        return _json(task.model_dump())
 
     # Tasks
     if name == "task_create":
-        task = db.create_task(TaskCreate(
-            ticket_id=args["ticket_id"],
-            title=args["title"],
-            details=args.get("details"),
-            status=TaskStatus(args.get("status", "pending")),
-            priority=Priority(args.get("priority", "medium")),
-            complexity=Complexity(args.get("complexity", "medium"))
-        ))
+        task = db.create_task(
+            TaskCreate(
+                ticket_id=args["ticket_id"],
+                title=args["title"],
+                details=args.get("details"),
+                status=TaskStatus(args.get("status", "pending")),
+                priority=Priority(args.get("priority", "medium")),
+                complexity=Complexity(args.get("complexity", "medium")),
+            )
+        )
         return f"Created task: {_json(task)}"
 
     if name == "task_list":
@@ -358,7 +518,7 @@ async def _handle_tool(name: str, args: dict) -> str:
             details=args.get("details"),
             status=TaskStatus(args["status"]) if args.get("status") else None,
             priority=Priority(args["priority"]) if args.get("priority") else None,
-            complexity=Complexity(args["complexity"]) if args.get("complexity") else None
+            complexity=Complexity(args["complexity"]) if args.get("complexity") else None,
         )
         task = db.update_task(args["task_id"], update)
         if task:
@@ -367,11 +527,13 @@ async def _handle_tool(name: str, args: dict) -> str:
 
     # Notes
     if name == "note_add":
-        note = db.add_note(NoteCreate(
-            entity_type=args["entity_type"],
-            entity_id=args["entity_id"],
-            content=args["content"]
-        ))
+        note = db.add_note(
+            NoteCreate(
+                entity_type=args["entity_type"],
+                entity_id=args["entity_id"],
+                content=args["content"],
+            )
+        )
         return f"Added note: {_json(note)}"
 
     # Roadmap view
@@ -384,9 +546,11 @@ async def _handle_tool(name: str, args: dict) -> str:
 
         # Summary format
         lines = ["# Roadmap Summary\n"]
-        lines.append(f"**Stats**: {roadmap.stats['tickets_done']}/{roadmap.stats['total_tickets']} tickets, "
-                    f"{roadmap.stats['tasks_done']}/{roadmap.stats['total_tasks']} tasks "
-                    f"({roadmap.stats['completion_pct']}% complete)\n")
+        lines.append(
+            f"**Stats**: {roadmap.stats['tickets_done']}/{roadmap.stats['total_tickets']} tickets, "
+            f"{roadmap.stats['tasks_done']}/{roadmap.stats['total_tasks']} tasks "
+            f"({roadmap.stats['completion_pct']}% complete)\n"
+        )
 
         for org in roadmap.orgs:
             lines.append(f"## {org.name}")
@@ -398,17 +562,26 @@ async def _handle_tool(name: str, args: dict) -> str:
 
                 for ticket in proj.tickets:
                     status_icon = {
-                        "backlog": "[ ]", "planned": "[P]", "in-progress": "[~]",
-                        "done": "[x]", "blocked": "[!]"
+                        "backlog": "[ ]",
+                        "planned": "[P]",
+                        "in-progress": "[~]",
+                        "done": "[x]",
+                        "blocked": "[!]",
                     }.get(ticket.status.value, "[ ]")
-                    prio = f"({ticket.priority.value})" if ticket.priority.value in ["critical", "high"] else ""
+                    prio = (
+                        f"({ticket.priority.value})"
+                        if ticket.priority.value in ["critical", "high"]
+                        else ""
+                    )
                     lines.append(f"- {status_icon} **{ticket.id}**: {ticket.title} {prio}")
                     lines.append(f"  Tasks: {ticket.tasks_done}/{ticket.task_count}")
 
                     # Show incomplete tasks
                     incomplete = [t for t in ticket.tasks if t.status.value != "done"]
                     for task in incomplete[:5]:  # Show max 5
-                        t_icon = {"pending": "[ ]", "in-progress": "[~]", "blocked": "[!]"}.get(task.status.value, "[ ]")
+                        t_icon = {"pending": "[ ]", "in-progress": "[~]", "blocked": "[!]"}.get(
+                            task.status.value, "[ ]"
+                        )
                         lines.append(f"    - {t_icon} {task.id}: {task.title}")
                     if len(incomplete) > 5:
                         lines.append(f"    - ... and {len(incomplete) - 5} more")
@@ -418,6 +591,7 @@ async def _handle_tool(name: str, args: dict) -> str:
     # Info
     if name == "info":
         import os
+
         roadmap = db.get_roadmap()
         db_size = os.path.getsize(DEFAULT_DB_PATH) if DEFAULT_DB_PATH.exists() else 0
         db_size_mb = db_size / (1024 * 1024)
@@ -432,9 +606,9 @@ async def _handle_tool(name: str, args: dict) -> str:
 ## Current Stats
 - **Organizations**: {len(roadmap.orgs)}
 - **Projects**: {sum(len(o.projects) for o in roadmap.orgs)}
-- **Tickets**: {roadmap.stats.get('total_tickets', 0)} ({roadmap.stats.get('tickets_done', 0)} done)
-- **Tasks**: {roadmap.stats.get('total_tasks', 0)} ({roadmap.stats.get('tasks_done', 0)} done)
-- **Completion**: {roadmap.stats.get('completion_pct', 0)}%
+- **Tickets**: {roadmap.stats.get("total_tickets", 0)} ({roadmap.stats.get("tickets_done", 0)} done)
+- **Tasks**: {roadmap.stats.get("total_tasks", 0)} ({roadmap.stats.get("tasks_done", 0)} done)
+- **Completion**: {roadmap.stats.get("completion_pct", 0)}%
 
 ## Installation
 
@@ -466,16 +640,13 @@ uv run python -m tpm_mcp.migrate /path/to/project-tracker
 async def run_server():
     """Run the MCP server with stdio transport."""
     async with stdio_server() as (read_stream, write_stream):
-        await server.run(
-            read_stream,
-            write_stream,
-            server.create_initialization_options()
-        )
+        await server.run(read_stream, write_stream, server.create_initialization_options())
 
 
 def main():
     """Run the MCP server."""
     import asyncio
+
     asyncio.run(run_server())
 
 
