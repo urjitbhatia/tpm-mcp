@@ -9,13 +9,13 @@ from mcp.types import Tool, TextContent
 from .db import TrackerDB
 from .models import (
     OrgCreate, ProjectCreate,
-    FeatureCreate, FeatureUpdate, FeatureStatus,
+    TicketCreate, TicketUpdate, TicketStatus,
     TaskCreate, TaskUpdate, TaskStatus,
     NoteCreate, Priority, Complexity,
 )
 
 # Initialize server and database
-server = Server("tracker-mcp")
+server = Server("technical-project-manager")
 db = TrackerDB()
 
 
@@ -56,10 +56,10 @@ This replaces the project-tracking-pm agent. Returns all organizations, projects
                 }
             }
         ),
-        # Feature operations
+        # Ticket operations
         Tool(
-            name="feature_create",
-            description="""PROJECT MANAGEMENT (TPM): Create a new feature, epic, or issue to track.
+            name="ticket_create",
+            description="""PROJECT MANAGEMENT (TPM): Create a new ticket, epic, or issue to track.
 
 USE THIS TOOL WHEN:
 - User says ":TPM: Add X feature to the roadmap"
@@ -69,15 +69,15 @@ USE THIS TOOL WHEN:
 - User asks to scope out or define new work
 - User discusses new work that should be tracked
 
-Use roadmap_view first to get the project_id. Features are high-level work items (like Jira epics/stories).""",
+Use roadmap_view first to get the project_id. Tickets are high-level work items (like Jira epics/stories).""",
             inputSchema={
                 "type": "object",
                 "properties": {
                     "project_id": {"type": "string", "description": "Project ID (use project_list to find)"},
-                    "title": {"type": "string", "description": "Feature title"},
-                    "description": {"type": "string", "description": "Detailed description of the feature"},
+                    "title": {"type": "string", "description": "Ticket title"},
+                    "description": {"type": "string", "description": "Detailed description of the ticket"},
                     "status": {"type": "string", "enum": ["backlog", "planned", "in-progress", "done", "blocked"],
-                             "description": "Feature status (default: backlog)"},
+                             "description": "Ticket status (default: backlog)"},
                     "priority": {"type": "string", "enum": ["critical", "high", "medium", "low"],
                                 "description": "Priority level (default: medium)"},
                     "tags": {"type": "array", "items": {"type": "string"}, "description": "Tags for categorization"},
@@ -87,22 +87,22 @@ Use roadmap_view first to get the project_id. Features are high-level work items
             }
         ),
         Tool(
-            name="feature_update",
-            description="""PROJECT MANAGEMENT (TPM): Update a feature's status, priority, or details.
+            name="ticket_update",
+            description="""PROJECT MANAGEMENT (TPM): Update a ticket's status, priority, or details.
 
 USE THIS TOOL WHEN:
-- User says "I just finished implementing X" - mark related feature as done
+- User says "I just finished implementing X" - mark related ticket as done
 - User says "I've pushed commits for X" - update status based on progress
 - Marking work as in-progress, done, or blocked
-- Changing priority of a feature
-- User completes a feature and needs to update status
+- Changing priority of a ticket
+- User completes a ticket and needs to update status
 - Adding/updating tags or assignees
 
-Use roadmap_view first to find the feature_id.""",
+Use roadmap_view first to find the ticket_id.""",
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "feature_id": {"type": "string", "description": "Feature ID (e.g., FEAT-001)"},
+                    "ticket_id": {"type": "string", "description": "Ticket ID (e.g., FEAT-001)"},
                     "title": {"type": "string", "description": "New title"},
                     "description": {"type": "string", "description": "New description"},
                     "status": {"type": "string", "enum": ["backlog", "planned", "in-progress", "done", "blocked"],
@@ -112,12 +112,12 @@ Use roadmap_view first to find the feature_id.""",
                     "tags": {"type": "array", "items": {"type": "string"}, "description": "Updated tags"},
                     "assignees": {"type": "array", "items": {"type": "string"}, "description": "Updated assignees"}
                 },
-                "required": ["feature_id"]
+                "required": ["ticket_id"]
             }
         ),
         Tool(
-            name="feature_list",
-            description="PROJECT MANAGEMENT: List features filtered by project or status. Use roadmap_view for full overview.",
+            name="ticket_list",
+            description="PROJECT MANAGEMENT: List tickets filtered by project or status. Use roadmap_view for full overview.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -128,29 +128,29 @@ Use roadmap_view first to find the feature_id.""",
             }
         ),
         Tool(
-            name="feature_get",
-            description="PROJECT MANAGEMENT: Get detailed info about a specific feature including all its tasks.",
+            name="ticket_get",
+            description="PROJECT MANAGEMENT: Get detailed info about a specific ticket including all its tasks.",
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "feature_id": {"type": "string", "description": "Feature ID (e.g., FEAT-001)"}
+                    "ticket_id": {"type": "string", "description": "Ticket ID (e.g., FEAT-001)"}
                 },
-                "required": ["feature_id"]
+                "required": ["ticket_id"]
             }
         ),
         # Task operations
         Tool(
             name="task_create",
-            description="""PROJECT MANAGEMENT: Create a task (sub-item) under a feature.
+            description="""PROJECT MANAGEMENT (TPM): Create a task (sub-item) under a ticket.
 
 USE THIS TOOL WHEN:
-- Breaking down a feature into smaller tasks
+- Breaking down a ticket into smaller tasks
 - User asks to add implementation steps
 - Creating a work breakdown structure""",
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "feature_id": {"type": "string", "description": "Parent feature ID"},
+                    "ticket_id": {"type": "string", "description": "Parent ticket ID"},
                     "title": {"type": "string", "description": "Task title"},
                     "details": {"type": "string", "description": "Task details/implementation notes"},
                     "status": {"type": "string", "enum": ["pending", "in-progress", "done", "blocked"],
@@ -160,12 +160,12 @@ USE THIS TOOL WHEN:
                     "complexity": {"type": "string", "enum": ["simple", "medium", "complex"],
                                   "description": "Complexity estimate (default: medium)"}
                 },
-                "required": ["feature_id", "title"]
+                "required": ["ticket_id", "title"]
             }
         ),
         Tool(
             name="task_update",
-            description="PROJECT MANAGEMENT: Update a task's status or details. Use when completing or updating task progress.",
+            description="PROJECT MANAGEMENT (TPM): Update a task's status or details. Use when completing or updating task progress.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -184,11 +184,11 @@ USE THIS TOOL WHEN:
         ),
         Tool(
             name="task_list",
-            description="PROJECT MANAGEMENT: List tasks filtered by feature or status.",
+            description="PROJECT MANAGEMENT (TPM): List tasks filtered by ticket or status.",
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "feature_id": {"type": "string", "description": "Filter by feature ID"},
+                    "ticket_id": {"type": "string", "description": "Filter by ticket ID"},
                     "status": {"type": "string", "enum": ["pending", "in-progress", "done", "blocked"],
                              "description": "Filter by status"}
                 }
@@ -197,11 +197,11 @@ USE THIS TOOL WHEN:
         # Notes
         Tool(
             name="note_add",
-            description="PROJECT MANAGEMENT: Add a note/comment to a feature or task for context or decisions.",
+            description="PROJECT MANAGEMENT (TPM): Add a note/comment to a ticket or task for context or decisions.",
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "entity_type": {"type": "string", "enum": ["org", "project", "feature", "task"],
+                    "entity_type": {"type": "string", "enum": ["org", "project", "ticket", "task"],
                                    "description": "Type of entity"},
                     "entity_id": {"type": "string", "description": "ID of the entity"},
                     "content": {"type": "string", "description": "Note content"}
@@ -288,58 +288,63 @@ async def _handle_tool(name: str, args: dict) -> str:
         projects = db.list_projects(args.get("org_id"))
         return _json([p.model_dump() for p in projects])
 
-    # Features
-    if name == "feature_create":
-        feature = db.create_feature(FeatureCreate(
+    # Tickets
+    if name == "ticket_create":
+        ticket = db.create_ticket(TicketCreate(
             project_id=args["project_id"],
             title=args["title"],
             description=args.get("description"),
-            status=FeatureStatus(args.get("status", "backlog")),
-            priority=Priority(args.get("priority", "medium"))
+            status=TicketStatus(args.get("status", "backlog")),
+            priority=Priority(args.get("priority", "medium")),
+            tags=args.get("tags"),
+            assignees=args.get("assignees")
         ))
-        return f"Created feature: {_json(feature)}"
+        return f"Created ticket: {_json(ticket)}"
 
-    if name == "feature_list":
-        status = FeatureStatus(args["status"]) if args.get("status") else None
-        features = db.list_features(args.get("project_id"), status)
-        return _json([f.model_dump() for f in features])
+    if name == "ticket_list":
+        status = TicketStatus(args["status"]) if args.get("status") else None
+        tickets = db.list_tickets(args.get("project_id"), status)
+        return _json([t.model_dump() for t in tickets])
 
-    if name == "feature_update":
-        update = FeatureUpdate(
+    if name == "ticket_update":
+        update = TicketUpdate(
             title=args.get("title"),
             description=args.get("description"),
-            status=FeatureStatus(args["status"]) if args.get("status") else None,
-            priority=Priority(args["priority"]) if args.get("priority") else None
+            status=TicketStatus(args["status"]) if args.get("status") else None,
+            priority=Priority(args["priority"]) if args.get("priority") else None,
+            tags=args.get("tags"),
+            assignees=args.get("assignees")
         )
-        feature = db.update_feature(args["feature_id"], update)
-        if feature:
-            return f"Updated feature: {_json(feature)}"
-        return f"Feature {args['feature_id']} not found"
+        ticket = db.update_ticket(args["ticket_id"], update)
+        if ticket:
+            return f"Updated ticket: {_json(ticket)}"
+        return f"Ticket {args['ticket_id']} not found"
 
-    if name == "feature_get":
-        feature = db.get_feature(args["feature_id"])
-        if not feature:
-            return f"Feature {args['feature_id']} not found"
-        tasks = db.list_tasks(args["feature_id"])
+    if name == "ticket_get":
+        ticket = db.get_ticket(args["ticket_id"])
+        if not ticket:
+            return f"Ticket {args['ticket_id']} not found"
+        tasks = db.list_tasks(args["ticket_id"])
         return _json({
-            "feature": feature.model_dump(),
+            "ticket": ticket.model_dump(),
             "tasks": [t.model_dump() for t in tasks]
         })
 
     # Tasks
     if name == "task_create":
         task = db.create_task(TaskCreate(
-            feature_id=args["feature_id"],
+            ticket_id=args["ticket_id"],
             title=args["title"],
             details=args.get("details"),
             status=TaskStatus(args.get("status", "pending")),
+            priority=Priority(args.get("priority", "medium")),
             complexity=Complexity(args.get("complexity", "medium"))
         ))
         return f"Created task: {_json(task)}"
 
     if name == "task_list":
         status = TaskStatus(args["status"]) if args.get("status") else None
-        tasks = db.list_tasks(args.get("feature_id"), status)
+        tasks = db.list_tasks(args.get("ticket_id"), status)
         return _json([t.model_dump() for t in tasks])
 
     if name == "task_update":
@@ -347,6 +352,7 @@ async def _handle_tool(name: str, args: dict) -> str:
             title=args.get("title"),
             details=args.get("details"),
             status=TaskStatus(args["status"]) if args.get("status") else None,
+            priority=Priority(args["priority"]) if args.get("priority") else None,
             complexity=Complexity(args["complexity"]) if args.get("complexity") else None
         )
         task = db.update_task(args["task_id"], update)
@@ -373,7 +379,7 @@ async def _handle_tool(name: str, args: dict) -> str:
 
         # Summary format
         lines = ["# Roadmap Summary\n"]
-        lines.append(f"**Stats**: {roadmap.stats['features_done']}/{roadmap.stats['total_features']} features, "
+        lines.append(f"**Stats**: {roadmap.stats['tickets_done']}/{roadmap.stats['total_tickets']} tickets, "
                     f"{roadmap.stats['tasks_done']}/{roadmap.stats['total_tasks']} tasks "
                     f"({roadmap.stats['completion_pct']}% complete)\n")
 
@@ -383,19 +389,19 @@ async def _handle_tool(name: str, args: dict) -> str:
                 lines.append(f"\n### {proj.name}")
                 if proj.description:
                     lines.append(f"_{proj.description}_\n")
-                lines.append(f"Features: {proj.features_done}/{proj.feature_count} done\n")
+                lines.append(f"Tickets: {proj.tickets_done}/{proj.ticket_count} done\n")
 
-                for feat in proj.features:
+                for ticket in proj.tickets:
                     status_icon = {
                         "backlog": "[ ]", "planned": "[P]", "in-progress": "[~]",
                         "done": "[x]", "blocked": "[!]"
-                    }.get(feat.status.value, "[ ]")
-                    prio = f"({feat.priority.value})" if feat.priority.value in ["critical", "high"] else ""
-                    lines.append(f"- {status_icon} **{feat.id}**: {feat.title} {prio}")
-                    lines.append(f"  Tasks: {feat.tasks_done}/{feat.task_count}")
+                    }.get(ticket.status.value, "[ ]")
+                    prio = f"({ticket.priority.value})" if ticket.priority.value in ["critical", "high"] else ""
+                    lines.append(f"- {status_icon} **{ticket.id}**: {ticket.title} {prio}")
+                    lines.append(f"  Tasks: {ticket.tasks_done}/{ticket.task_count}")
 
                     # Show incomplete tasks
-                    incomplete = [t for t in feat.tasks if t.status.value != "done"]
+                    incomplete = [t for t in ticket.tasks if t.status.value != "done"]
                     for task in incomplete[:5]:  # Show max 5
                         t_icon = {"pending": "[ ]", "in-progress": "[~]", "blocked": "[!]"}.get(task.status.value, "[ ]")
                         lines.append(f"    - {t_icon} {task.id}: {task.title}")

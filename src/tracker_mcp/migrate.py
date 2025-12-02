@@ -32,11 +32,11 @@ def normalize_status(status: str) -> str:
     return status_map.get(status, status)
 
 
-def extract_acceptance_criteria(feature: dict) -> Optional[list]:
-    """Extract acceptance criteria from various locations in feature data."""
+def extract_acceptance_criteria(ticket: dict) -> Optional[list]:
+    """Extract acceptance criteria from various locations in ticket data."""
     # Direct acceptanceCriteria array
-    if "acceptanceCriteria" in feature:
-        ac = feature["acceptanceCriteria"]
+    if "acceptanceCriteria" in ticket:
+        ac = ticket["acceptanceCriteria"]
         if isinstance(ac, list):
             return ac
         elif isinstance(ac, dict):
@@ -49,7 +49,7 @@ def extract_acceptance_criteria(feature: dict) -> Optional[list]:
     return None
 
 
-def extract_metadata(feature: dict) -> dict:
+def extract_metadata(ticket: dict) -> dict:
     """Extract all rich metadata fields into a single dict."""
     metadata = {}
 
@@ -64,8 +64,8 @@ def extract_metadata(feature: dict) -> dict:
     ]
 
     for field in metadata_fields:
-        if field in feature and feature[field]:
-            metadata[field] = feature[field]
+        if field in ticket and ticket[field]:
+            metadata[field] = ticket[field]
 
     return metadata if metadata else None
 
@@ -102,7 +102,7 @@ def migrate_from_json(json_root: Path, db: TrackerDB) -> dict:
     stats = {
         "orgs": 0,
         "projects": 0,
-        "features": 0,
+        "tickets": 0,
         "tasks": 0,
         "notes": 0,
         "errors": []
@@ -192,8 +192,8 @@ def migrate_from_json(json_root: Path, db: TrackerDB) -> dict:
             features = roadmap.get("features", [])
 
             for feature in features:
-                feature_id = feature.get("id")
-                if not feature_id:
+                ticket_id = feature.get("id")
+                if not ticket_id:
                     continue
 
                 try:
@@ -201,8 +201,8 @@ def migrate_from_json(json_root: Path, db: TrackerDB) -> dict:
                     acceptance_criteria = extract_acceptance_criteria(feature)
                     metadata = extract_metadata(feature)
 
-                    db.create_feature_with_id(
-                        id=feature_id,
+                    db.create_ticket_with_id(
+                        id=ticket_id,
                         project_id=proj_id,
                         title=feature.get("title", "Untitled"),
                         description=feature.get("description"),
@@ -218,14 +218,14 @@ def migrate_from_json(json_root: Path, db: TrackerDB) -> dict:
                         blockers=feature.get("blockers"),
                         metadata=metadata
                     )
-                    stats["features"] += 1
+                    stats["tickets"] += 1
 
                     # Add notes
                     for note in feature.get("notes", []):
                         if isinstance(note, str) and note.strip():
                             db.add_note(NoteCreate(
-                                entity_type="feature",
-                                entity_id=feature_id,
+                                entity_type="ticket",
+                                entity_id=ticket_id,
                                 content=note
                             ))
                             stats["notes"] += 1
@@ -244,7 +244,7 @@ def migrate_from_json(json_root: Path, db: TrackerDB) -> dict:
 
                                 db.create_task_with_id(
                                     id=task_id,
-                                    feature_id=feature_id,
+                                    ticket_id=ticket_id,
                                     title=task.get("description", task.get("title", "Untitled")),
                                     details=task.get("details"),
                                     status=normalize_status(task.get("status", "pending")),
@@ -265,7 +265,7 @@ def migrate_from_json(json_root: Path, db: TrackerDB) -> dict:
 
                         db.create_task_with_id(
                             id=task_id,
-                            feature_id=feature_id,
+                            ticket_id=ticket_id,
                             title=subtask.get("title", subtask.get("description", "Untitled")),
                             details=subtask.get("description"),
                             status=normalize_status(subtask.get("status", "pending")),
@@ -277,21 +277,21 @@ def migrate_from_json(json_root: Path, db: TrackerDB) -> dict:
                         stats["tasks"] += 1
 
                 except Exception as e:
-                    stats["errors"].append(f"Failed to create feature {feature_id}: {e}")
+                    stats["errors"].append(f"Failed to create ticket {ticket_id}: {e}")
                     continue
 
             # Also check for separate subtask files like FEAT-007-subtasks.json
             for subtask_file in proj_dir.glob("*-subtasks.json"):
                 try:
                     subtask_data = load_json(subtask_file)
-                    feature_id = subtask_data.get("feature_id")
+                    ticket_id = subtask_data.get("feature_id")
 
-                    if not feature_id:
+                    if not ticket_id:
                         continue
 
-                    # Check if feature exists (might not if it failed to create)
-                    if not db.get_feature(feature_id):
-                        stats["errors"].append(f"Feature {feature_id} not found for subtask file {subtask_file}")
+                    # Check if ticket exists (might not if it failed to create)
+                    if not db.get_ticket(ticket_id):
+                        stats["errors"].append(f"Ticket {ticket_id} not found for subtask file {subtask_file}")
                         continue
 
                     for subtask in subtask_data.get("subtasks", []):
@@ -303,7 +303,7 @@ def migrate_from_json(json_root: Path, db: TrackerDB) -> dict:
 
                         db.create_task_with_id(
                             id=task_id,
-                            feature_id=feature_id,
+                            ticket_id=ticket_id,
                             title=subtask.get("title", "Untitled"),
                             details=subtask.get("description"),
                             status=normalize_status(subtask.get("status", "pending")),
@@ -335,7 +335,7 @@ def main():
     print("\n=== Migration Complete ===")
     print(f"Organizations: {stats['orgs']}")
     print(f"Projects: {stats['projects']}")
-    print(f"Features: {stats['features']}")
+    print(f"Tickets: {stats['tickets']}")
     print(f"Tasks: {stats['tasks']}")
     print(f"Notes: {stats['notes']}")
 

@@ -9,10 +9,10 @@ from typing import Any, Optional
 from .models import (
     Org, OrgCreate,
     Project, ProjectCreate,
-    Feature, FeatureCreate, FeatureUpdate, FeatureStatus,
+    Ticket, TicketCreate, TicketUpdate, TicketStatus,
     Task, TaskCreate, TaskUpdate, TaskStatus, Priority, Complexity,
     Note, NoteCreate,
-    RoadmapView, OrgView, ProjectView, FeatureView, TaskView,
+    RoadmapView, OrgView, ProjectView, TicketView, TaskView,
 )
 
 # Default database path
@@ -57,8 +57,8 @@ def _from_json(value: Optional[str]) -> Any:
         return None
 
 
-def _normalize_feature_status(status: str) -> str:
-    """Normalize feature status (completed -> done)."""
+def _normalize_ticket_status(status: str) -> str:
+    """Normalize ticket status (completed -> done)."""
     if status == "completed":
         return "done"
     return status
@@ -175,13 +175,13 @@ class TrackerDB:
             created_at=datetime.fromisoformat(r["created_at"])
         ) for r in rows]
 
-    # --- Features ---
+    # --- Tickets ---
 
-    def create_feature(self, data: FeatureCreate) -> Feature:
-        id = f"FEAT-{self._gen_id()}"
+    def create_ticket(self, data: TicketCreate) -> Ticket:
+        id = f"TICKET-{self._gen_id()}"
         now = self._now()
         self.conn.execute(
-            """INSERT INTO features (id, project_id, title, description, status, priority, created_at,
+            """INSERT INTO tickets (id, project_id, title, description, status, priority, created_at,
                assignees, tags, related_repos, acceptance_criteria, blockers, metadata)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (id, data.project_id, data.title, data.description,
@@ -190,14 +190,14 @@ class TrackerDB:
              _to_json(data.acceptance_criteria), _to_json(data.blockers), _to_json(data.metadata))
         )
         self.conn.commit()
-        return Feature(id=id, project_id=data.project_id, title=data.title,
+        return Ticket(id=id, project_id=data.project_id, title=data.title,
                       description=data.description, status=data.status,
                       priority=data.priority, created_at=datetime.fromisoformat(now),
                       assignees=data.assignees, tags=data.tags, related_repos=data.related_repos,
                       acceptance_criteria=data.acceptance_criteria, blockers=data.blockers,
                       metadata=data.metadata)
 
-    def create_feature_with_id(self, id: str, project_id: str, title: str,
+    def create_ticket_with_id(self, id: str, project_id: str, title: str,
                                description: Optional[str] = None,
                                status: str = "backlog",
                                priority: str = "medium",
@@ -209,12 +209,12 @@ class TrackerDB:
                                related_repos: Optional[list] = None,
                                acceptance_criteria: Optional[list] = None,
                                blockers: Optional[list] = None,
-                               metadata: Optional[dict] = None) -> Feature:
-        """Create feature with specific ID (for migration)."""
+                               metadata: Optional[dict] = None) -> Ticket:
+        """Create ticket with specific ID (for migration)."""
         now = created_at or self._now()
-        status = _normalize_feature_status(status)
+        status = _normalize_ticket_status(status)
         self.conn.execute(
-            """INSERT OR REPLACE INTO features (id, project_id, title, description, status, priority,
+            """INSERT OR REPLACE INTO tickets (id, project_id, title, description, status, priority,
                created_at, started_at, completed_at, assignees, tags, related_repos,
                acceptance_criteria, blockers, metadata)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
@@ -223,21 +223,21 @@ class TrackerDB:
              _to_json(acceptance_criteria), _to_json(blockers), _to_json(metadata))
         )
         self.conn.commit()
-        return self.get_feature(id)
+        return self.get_ticket(id)
 
-    def get_feature(self, feature_id: str) -> Optional[Feature]:
+    def get_ticket(self, ticket_id: str) -> Optional[Ticket]:
         row = self.conn.execute(
-            "SELECT * FROM features WHERE id = ?", (feature_id,)
+            "SELECT * FROM tickets WHERE id = ?", (ticket_id,)
         ).fetchone()
         if row:
-            return self._row_to_feature(row)
+            return self._row_to_ticket(row)
         return None
 
-    def _row_to_feature(self, row) -> Feature:
-        status = _normalize_feature_status(row["status"])
-        return Feature(
+    def _row_to_ticket(self, row) -> Ticket:
+        status = _normalize_ticket_status(row["status"])
+        return Ticket(
             id=row["id"], project_id=row["project_id"], title=row["title"],
-            description=row["description"], status=FeatureStatus(status),
+            description=row["description"], status=TicketStatus(status),
             priority=Priority(row["priority"]),
             created_at=datetime.fromisoformat(row["created_at"]),
             started_at=datetime.fromisoformat(row["started_at"]) if row["started_at"] else None,
@@ -250,9 +250,9 @@ class TrackerDB:
             metadata=_from_json(row["metadata"]),
         )
 
-    def list_features(self, project_id: Optional[str] = None,
-                     status: Optional[FeatureStatus] = None) -> list[Feature]:
-        query = "SELECT * FROM features WHERE 1=1"
+    def list_tickets(self, project_id: Optional[str] = None,
+                     status: Optional[TicketStatus] = None) -> list[Ticket]:
+        query = "SELECT * FROM tickets WHERE 1=1"
         params = []
         if project_id:
             query += " AND project_id = ?"
@@ -262,9 +262,9 @@ class TrackerDB:
             params.append(status.value)
         query += " ORDER BY priority, created_at"
         rows = self.conn.execute(query, params).fetchall()
-        return [self._row_to_feature(r) for r in rows]
+        return [self._row_to_ticket(r) for r in rows]
 
-    def update_feature(self, feature_id: str, data: FeatureUpdate) -> Optional[Feature]:
+    def update_ticket(self, ticket_id: str, data: TicketUpdate) -> Optional[Ticket]:
         updates = []
         params = []
         if data.title is not None:
@@ -276,10 +276,10 @@ class TrackerDB:
         if data.status is not None:
             updates.append("status = ?")
             params.append(data.status.value)
-            if data.status == FeatureStatus.IN_PROGRESS:
+            if data.status == TicketStatus.IN_PROGRESS:
                 updates.append("started_at = ?")
                 params.append(self._now())
-            elif data.status in (FeatureStatus.DONE, FeatureStatus.COMPLETED):
+            elif data.status in (TicketStatus.DONE, TicketStatus.COMPLETED):
                 updates.append("completed_at = ?")
                 params.append(self._now())
         if data.priority is not None:
@@ -305,48 +305,48 @@ class TrackerDB:
             params.append(_to_json(data.metadata))
 
         if not updates:
-            return self.get_feature(feature_id)
+            return self.get_ticket(ticket_id)
 
-        params.append(feature_id)
+        params.append(ticket_id)
         self.conn.execute(
-            f"UPDATE features SET {', '.join(updates)} WHERE id = ?", params
+            f"UPDATE tickets SET {', '.join(updates)} WHERE id = ?", params
         )
         self.conn.commit()
-        return self.get_feature(feature_id)
+        return self.get_ticket(ticket_id)
 
     # --- Tasks ---
 
     def create_task(self, data: TaskCreate) -> Task:
-        # Get feature to extract prefix
-        feature = self.get_feature(data.feature_id)
-        if not feature:
-            raise ValueError(f"Feature {data.feature_id} not found")
+        # Get ticket to extract prefix
+        ticket = self.get_ticket(data.ticket_id)
+        if not ticket:
+            raise ValueError(f"Ticket {data.ticket_id} not found")
 
-        # Count existing tasks for this feature to generate task number
+        # Count existing tasks for this ticket to generate task number
         count = self.conn.execute(
-            "SELECT COUNT(*) FROM tasks WHERE feature_id = ?", (data.feature_id,)
+            "SELECT COUNT(*) FROM tasks WHERE ticket_id = ?", (data.ticket_id,)
         ).fetchone()[0]
 
-        # Generate task ID like TASK-FEAT-001-1
-        feat_num = feature.id.replace("FEAT-", "")
-        id = f"TASK-{feat_num}-{count + 1}"
+        # Generate task ID like TASK-TICKET-001-1
+        ticket_num = ticket.id.replace("TICKET-", "").replace("FEAT-", "").replace("ISSUE-", "")
+        id = f"TASK-{ticket_num}-{count + 1}"
         now = self._now()
 
         self.conn.execute(
-            """INSERT INTO tasks (id, feature_id, title, details, status, priority, complexity,
+            """INSERT INTO tasks (id, ticket_id, title, details, status, priority, complexity,
                created_at, acceptance_criteria, metadata)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (id, data.feature_id, data.title, data.details,
+            (id, data.ticket_id, data.title, data.details,
              data.status.value, data.priority.value, data.complexity.value, now,
              _to_json(data.acceptance_criteria), _to_json(data.metadata))
         )
         self.conn.commit()
-        return Task(id=id, feature_id=data.feature_id, title=data.title,
+        return Task(id=id, ticket_id=data.ticket_id, title=data.title,
                    details=data.details, status=data.status, priority=data.priority,
                    complexity=data.complexity, created_at=datetime.fromisoformat(now),
                    acceptance_criteria=data.acceptance_criteria, metadata=data.metadata)
 
-    def create_task_with_id(self, id: str, feature_id: str, title: str,
+    def create_task_with_id(self, id: str, ticket_id: str, title: str,
                             details: Optional[str] = None,
                             status: str = "pending",
                             priority: str = "medium",
@@ -359,10 +359,10 @@ class TrackerDB:
         now = created_at or self._now()
         status = _normalize_task_status(status)
         self.conn.execute(
-            """INSERT OR REPLACE INTO tasks (id, feature_id, title, details, status, priority, complexity,
+            """INSERT OR REPLACE INTO tasks (id, ticket_id, title, details, status, priority, complexity,
                created_at, completed_at, acceptance_criteria, metadata)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (id, feature_id, title, details, status, priority, complexity, now, completed_at,
+            (id, ticket_id, title, details, status, priority, complexity, now, completed_at,
              _to_json(acceptance_criteria), _to_json(metadata))
         )
         self.conn.commit()
@@ -379,7 +379,7 @@ class TrackerDB:
     def _row_to_task(self, row) -> Task:
         status = _normalize_task_status(row["status"])
         return Task(
-            id=row["id"], feature_id=row["feature_id"], title=row["title"],
+            id=row["id"], ticket_id=row["ticket_id"], title=row["title"],
             details=row["details"], status=TaskStatus(status),
             priority=Priority(row["priority"] or "medium"),
             complexity=Complexity(row["complexity"] or "medium"),
@@ -389,13 +389,13 @@ class TrackerDB:
             metadata=_from_json(row["metadata"]),
         )
 
-    def list_tasks(self, feature_id: Optional[str] = None,
+    def list_tasks(self, ticket_id: Optional[str] = None,
                   status: Optional[TaskStatus] = None) -> list[Task]:
         query = "SELECT * FROM tasks WHERE 1=1"
         params = []
-        if feature_id:
-            query += " AND feature_id = ?"
-            params.append(feature_id)
+        if ticket_id:
+            query += " AND ticket_id = ?"
+            params.append(ticket_id)
         if status:
             query += " AND status = ?"
             params.append(status.value)
@@ -494,8 +494,8 @@ class TrackerDB:
             orgs = [o for o in orgs if o.id == org_id]
 
         org_views = []
-        total_features = 0
-        features_done = 0
+        total_tickets = 0
+        tickets_done = 0
         total_tasks = 0
         tasks_done = 0
 
@@ -504,45 +504,45 @@ class TrackerDB:
             project_views = []
 
             for proj in projects:
-                features = self.list_features(proj.id)
-                feature_views = []
-                proj_features_done = 0
+                tickets = self.list_tickets(proj.id)
+                ticket_views = []
+                proj_tickets_done = 0
 
-                for feat in features:
-                    tasks = self.list_tasks(feat.id)
+                for ticket in tickets:
+                    tasks = self.list_tasks(ticket.id)
                     task_views = [
                         TaskView(id=t.id, title=t.title, status=t.status,
                                 priority=t.priority, complexity=t.complexity)
                         for t in tasks
                     ]
-                    feat_tasks_done = sum(1 for t in tasks if t.status in (TaskStatus.DONE, TaskStatus.COMPLETED))
+                    ticket_tasks_done = sum(1 for t in tasks if t.status in (TaskStatus.DONE, TaskStatus.COMPLETED))
 
-                    feature_views.append(FeatureView(
-                        id=feat.id, title=feat.title, status=feat.status,
-                        priority=feat.priority, tags=feat.tags, task_count=len(tasks),
-                        tasks_done=feat_tasks_done, tasks=task_views
+                    ticket_views.append(TicketView(
+                        id=ticket.id, title=ticket.title, status=ticket.status,
+                        priority=ticket.priority, tags=ticket.tags, task_count=len(tasks),
+                        tasks_done=ticket_tasks_done, tasks=task_views
                     ))
 
                     total_tasks += len(tasks)
-                    tasks_done += feat_tasks_done
-                    if feat.status in (FeatureStatus.DONE, FeatureStatus.COMPLETED):
-                        proj_features_done += 1
+                    tasks_done += ticket_tasks_done
+                    if ticket.status in (TicketStatus.DONE, TicketStatus.COMPLETED):
+                        proj_tickets_done += 1
 
                 project_views.append(ProjectView(
                     id=proj.id, name=proj.name, description=proj.description,
-                    feature_count=len(features), features_done=proj_features_done,
-                    features=feature_views
+                    ticket_count=len(tickets), tickets_done=proj_tickets_done,
+                    tickets=ticket_views
                 ))
-                total_features += len(features)
-                features_done += proj_features_done
+                total_tickets += len(tickets)
+                tickets_done += proj_tickets_done
 
             org_views.append(OrgView(id=org.id, name=org.name, projects=project_views))
 
         return RoadmapView(
             orgs=org_views,
             stats={
-                "total_features": total_features,
-                "features_done": features_done,
+                "total_tickets": total_tickets,
+                "tickets_done": tickets_done,
                 "total_tasks": total_tasks,
                 "tasks_done": tasks_done,
                 "completion_pct": round(tasks_done / total_tasks * 100, 1) if total_tasks > 0 else 0

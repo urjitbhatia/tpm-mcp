@@ -7,9 +7,9 @@ import pytest
 
 from tracker_mcp.db import TrackerDB
 from tracker_mcp.models import (
-    OrgCreate, ProjectCreate, FeatureCreate, FeatureUpdate,
+    OrgCreate, ProjectCreate, TicketCreate, TicketUpdate,
     TaskCreate, TaskUpdate, NoteCreate,
-    FeatureStatus, TaskStatus, Priority, Complexity
+    TicketStatus, TaskStatus, Priority, Complexity
 )
 
 
@@ -98,101 +98,101 @@ class TestProjects:
         assert all(p.org_id == org1.id for p in projects)
 
 
-class TestFeatures:
-    def test_create_feature(self, db):
+class TestTickets:
+    def test_create_ticket(self, db):
         org = db.create_org(OrgCreate(name="Test Org"))
         project = db.create_project(ProjectCreate(org_id=org.id, name="Test Project"))
 
-        feature = db.create_feature(FeatureCreate(
+        ticket = db.create_ticket(TicketCreate(
             project_id=project.id,
-            title="Test Feature",
-            description="A test feature",
-            status=FeatureStatus.PLANNED,
+            title="Test Ticket",
+            description="A test ticket",
+            status=TicketStatus.PLANNED,
             priority=Priority.HIGH,
-            tags=["test", "feature"],
+            tags=["test", "ticket"],
             assignees=["Staff Engineer"]
         ))
 
-        assert feature.id.startswith("FEAT-")
-        assert feature.title == "Test Feature"
-        assert feature.status == FeatureStatus.PLANNED
-        assert feature.priority == Priority.HIGH
-        assert feature.tags == ["test", "feature"]
-        assert feature.assignees == ["Staff Engineer"]
+        assert ticket.id.startswith("TICKET-")
+        assert ticket.title == "Test Ticket"
+        assert ticket.status == TicketStatus.PLANNED
+        assert ticket.priority == Priority.HIGH
+        assert ticket.tags == ["test", "ticket"]
+        assert ticket.assignees == ["Staff Engineer"]
 
-    def test_create_feature_with_id(self, db):
+    def test_create_ticket_with_id(self, db):
         org = db.create_org_with_id(id="test-org", name="Test Org")
         project = db.create_project_with_id(id="test-project", org_id=org.id, name="Test Project")
 
-        feature = db.create_feature_with_id(
+        ticket = db.create_ticket_with_id(
             id="FEAT-001",
             project_id=project.id,
-            title="Test Feature",
+            title="Test Ticket",
             status="in-progress",
             priority="high",
             tags=["api", "backend"],
             metadata={"architecture": {"decision": "Use FastAPI"}}
         )
 
-        assert feature.id == "FEAT-001"
-        assert feature.status == FeatureStatus.IN_PROGRESS
-        assert feature.tags == ["api", "backend"]
-        assert feature.metadata == {"architecture": {"decision": "Use FastAPI"}}
+        assert ticket.id == "FEAT-001"
+        assert ticket.status == TicketStatus.IN_PROGRESS
+        assert ticket.tags == ["api", "backend"]
+        assert ticket.metadata == {"architecture": {"decision": "Use FastAPI"}}
 
-    def test_feature_status_normalization(self, db):
+    def test_ticket_status_normalization(self, db):
         """Test that 'completed' status is normalized to 'done'."""
         org = db.create_org_with_id(id="test-org", name="Test Org")
         project = db.create_project_with_id(id="test-project", org_id=org.id, name="Test Project")
 
-        feature = db.create_feature_with_id(
+        ticket = db.create_ticket_with_id(
             id="FEAT-001",
             project_id=project.id,
-            title="Test Feature",
+            title="Test Ticket",
             status="completed"  # Should be normalized to "done"
         )
 
-        assert feature.status == FeatureStatus.DONE
+        assert ticket.status == TicketStatus.DONE
 
-    def test_update_feature(self, db):
+    def test_update_ticket(self, db):
         org = db.create_org(OrgCreate(name="Test Org"))
         project = db.create_project(ProjectCreate(org_id=org.id, name="Test Project"))
-        feature = db.create_feature(FeatureCreate(
+        ticket = db.create_ticket(TicketCreate(
             project_id=project.id,
-            title="Test Feature"
+            title="Test Ticket"
         ))
 
-        updated = db.update_feature(feature.id, FeatureUpdate(
-            title="Updated Feature",
-            status=FeatureStatus.IN_PROGRESS,
+        updated = db.update_ticket(ticket.id, TicketUpdate(
+            title="Updated Ticket",
+            status=TicketStatus.IN_PROGRESS,
             tags=["updated"]
         ))
 
-        assert updated.title == "Updated Feature"
-        assert updated.status == FeatureStatus.IN_PROGRESS
+        assert updated.title == "Updated Ticket"
+        assert updated.status == TicketStatus.IN_PROGRESS
         assert updated.started_at is not None  # Should be set when status changes to in-progress
         assert updated.tags == ["updated"]
 
-    def test_list_features_by_status(self, db):
+    def test_list_tickets_by_status(self, db):
         org = db.create_org(OrgCreate(name="Test Org"))
         project = db.create_project(ProjectCreate(org_id=org.id, name="Test Project"))
 
-        db.create_feature(FeatureCreate(project_id=project.id, title="Feature 1", status=FeatureStatus.BACKLOG))
-        db.create_feature(FeatureCreate(project_id=project.id, title="Feature 2", status=FeatureStatus.IN_PROGRESS))
-        db.create_feature(FeatureCreate(project_id=project.id, title="Feature 3", status=FeatureStatus.DONE))
+        db.create_ticket(TicketCreate(project_id=project.id, title="Ticket 1", status=TicketStatus.BACKLOG))
+        db.create_ticket(TicketCreate(project_id=project.id, title="Ticket 2", status=TicketStatus.IN_PROGRESS))
+        db.create_ticket(TicketCreate(project_id=project.id, title="Ticket 3", status=TicketStatus.DONE))
 
-        in_progress = db.list_features(status=FeatureStatus.IN_PROGRESS)
+        in_progress = db.list_tickets(status=TicketStatus.IN_PROGRESS)
         assert len(in_progress) == 1
-        assert in_progress[0].title == "Feature 2"
+        assert in_progress[0].title == "Ticket 2"
 
 
 class TestTasks:
     def test_create_task(self, db):
         org = db.create_org(OrgCreate(name="Test Org"))
         project = db.create_project(ProjectCreate(org_id=org.id, name="Test Project"))
-        feature = db.create_feature(FeatureCreate(project_id=project.id, title="Test Feature"))
+        ticket = db.create_ticket(TicketCreate(project_id=project.id, title="Test Ticket"))
 
         task = db.create_task(TaskCreate(
-            feature_id=feature.id,
+            ticket_id=ticket.id,
             title="Test Task",
             details="Task details",
             status=TaskStatus.PENDING,
@@ -210,11 +210,11 @@ class TestTasks:
     def test_create_task_with_id(self, db):
         org = db.create_org_with_id(id="test-org", name="Test Org")
         project = db.create_project_with_id(id="test-project", org_id=org.id, name="Test Project")
-        feature = db.create_feature_with_id(id="FEAT-001", project_id=project.id, title="Test Feature")
+        ticket = db.create_ticket_with_id(id="FEAT-001", project_id=project.id, title="Test Ticket")
 
         task = db.create_task_with_id(
             id="TASK-001-1",
-            feature_id=feature.id,
+            ticket_id=ticket.id,
             title="Test Task",
             status="completed",  # Should be normalized to "done"
             metadata={"filesCreated": ["/path/to/file.py"]}
@@ -227,11 +227,11 @@ class TestTasks:
     def test_task_auto_numbering(self, db):
         org = db.create_org(OrgCreate(name="Test Org"))
         project = db.create_project(ProjectCreate(org_id=org.id, name="Test Project"))
-        feature = db.create_feature(FeatureCreate(project_id=project.id, title="Test Feature"))
+        ticket = db.create_ticket(TicketCreate(project_id=project.id, title="Test Ticket"))
 
-        task1 = db.create_task(TaskCreate(feature_id=feature.id, title="Task 1"))
-        task2 = db.create_task(TaskCreate(feature_id=feature.id, title="Task 2"))
-        task3 = db.create_task(TaskCreate(feature_id=feature.id, title="Task 3"))
+        task1 = db.create_task(TaskCreate(ticket_id=ticket.id, title="Task 1"))
+        task2 = db.create_task(TaskCreate(ticket_id=ticket.id, title="Task 2"))
+        task3 = db.create_task(TaskCreate(ticket_id=ticket.id, title="Task 3"))
 
         # IDs should be sequential
         assert "-1" in task1.id
@@ -241,8 +241,8 @@ class TestTasks:
     def test_update_task_sets_completed_at(self, db):
         org = db.create_org(OrgCreate(name="Test Org"))
         project = db.create_project(ProjectCreate(org_id=org.id, name="Test Project"))
-        feature = db.create_feature(FeatureCreate(project_id=project.id, title="Test Feature"))
-        task = db.create_task(TaskCreate(feature_id=feature.id, title="Test Task"))
+        ticket = db.create_ticket(TicketCreate(project_id=project.id, title="Test Ticket"))
+        task = db.create_task(TaskCreate(ticket_id=ticket.id, title="Test Task"))
 
         assert task.completed_at is None
 
@@ -252,10 +252,10 @@ class TestTasks:
     def test_task_dependencies(self, db):
         org = db.create_org(OrgCreate(name="Test Org"))
         project = db.create_project(ProjectCreate(org_id=org.id, name="Test Project"))
-        feature = db.create_feature(FeatureCreate(project_id=project.id, title="Test Feature"))
+        ticket = db.create_ticket(TicketCreate(project_id=project.id, title="Test Ticket"))
 
-        task1 = db.create_task(TaskCreate(feature_id=feature.id, title="Task 1"))
-        task2 = db.create_task(TaskCreate(feature_id=feature.id, title="Task 2"))
+        task1 = db.create_task(TaskCreate(ticket_id=ticket.id, title="Task 1"))
+        task2 = db.create_task(TaskCreate(ticket_id=ticket.id, title="Task 2"))
 
         db.add_task_dependency(task2.id, task1.id)
         deps = db.get_task_dependencies(task2.id)
@@ -292,26 +292,26 @@ class TestRoadmapView:
         # Create test data
         org = db.create_org(OrgCreate(name="Test Org"))
         project = db.create_project(ProjectCreate(org_id=org.id, name="Test Project"))
-        feature = db.create_feature(FeatureCreate(
+        ticket = db.create_ticket(TicketCreate(
             project_id=project.id,
-            title="Test Feature",
-            status=FeatureStatus.IN_PROGRESS,
+            title="Test Ticket",
+            status=TicketStatus.IN_PROGRESS,
             tags=["api"]
         ))
-        db.create_task(TaskCreate(feature_id=feature.id, title="Task 1", status=TaskStatus.DONE))
-        db.create_task(TaskCreate(feature_id=feature.id, title="Task 2", status=TaskStatus.PENDING))
+        db.create_task(TaskCreate(ticket_id=ticket.id, title="Task 1", status=TaskStatus.DONE))
+        db.create_task(TaskCreate(ticket_id=ticket.id, title="Task 2", status=TaskStatus.PENDING))
 
         roadmap = db.get_roadmap()
 
         assert len(roadmap.orgs) == 1
         assert roadmap.orgs[0].name == "Test Org"
         assert len(roadmap.orgs[0].projects) == 1
-        assert len(roadmap.orgs[0].projects[0].features) == 1
-        assert roadmap.orgs[0].projects[0].features[0].tags == ["api"]
-        assert roadmap.orgs[0].projects[0].features[0].tasks_done == 1
-        assert roadmap.orgs[0].projects[0].features[0].task_count == 2
+        assert len(roadmap.orgs[0].projects[0].tickets) == 1
+        assert roadmap.orgs[0].projects[0].tickets[0].tags == ["api"]
+        assert roadmap.orgs[0].projects[0].tickets[0].tasks_done == 1
+        assert roadmap.orgs[0].projects[0].tickets[0].task_count == 2
 
-        assert roadmap.stats["total_features"] == 1
+        assert roadmap.stats["total_tickets"] == 1
         assert roadmap.stats["total_tasks"] == 2
         assert roadmap.stats["tasks_done"] == 1
         assert roadmap.stats["completion_pct"] == 50.0
@@ -329,7 +329,7 @@ class TestRoadmapView:
 
 
 class TestJsonSerialization:
-    def test_feature_with_complex_metadata(self, db):
+    def test_ticket_with_complex_metadata(self, db):
         org = db.create_org_with_id(id="test-org", name="Test Org")
         project = db.create_project_with_id(id="test-project", org_id=org.id, name="Test Project")
 
@@ -345,22 +345,22 @@ class TestJsonSerialization:
             }
         }
 
-        feature = db.create_feature_with_id(
+        ticket = db.create_ticket_with_id(
             id="FEAT-001",
             project_id=project.id,
-            title="Test Feature",
+            title="Test Ticket",
             metadata=complex_metadata
         )
 
         # Fetch and verify
-        fetched = db.get_feature("FEAT-001")
+        fetched = db.get_ticket("FEAT-001")
         assert fetched.metadata == complex_metadata
         assert fetched.metadata["architecture"]["reasoning"] == ["Performance", "Async support"]
 
     def test_task_with_files_metadata(self, db):
         org = db.create_org_with_id(id="test-org", name="Test Org")
         project = db.create_project_with_id(id="test-project", org_id=org.id, name="Test Project")
-        feature = db.create_feature_with_id(id="FEAT-001", project_id=project.id, title="Test Feature")
+        ticket = db.create_ticket_with_id(id="FEAT-001", project_id=project.id, title="Test Ticket")
 
         task_metadata = {
             "filesCreated": ["/src/new_file.py"],
@@ -370,7 +370,7 @@ class TestJsonSerialization:
 
         task = db.create_task_with_id(
             id="TASK-001-1",
-            feature_id=feature.id,
+            ticket_id=ticket.id,
             title="Test Task",
             metadata=task_metadata
         )

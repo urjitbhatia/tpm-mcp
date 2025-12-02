@@ -6,7 +6,7 @@ from typing import Any, Optional
 from pydantic import BaseModel, Field
 
 
-class FeatureStatus(str, Enum):
+class TicketStatus(str, Enum):
     BACKLOG = "backlog"
     PLANNED = "planned"
     IN_PROGRESS = "in-progress"
@@ -63,12 +63,12 @@ class ProjectCreate(BaseModel):
     description: Optional[str] = None
 
 
-class Feature(BaseModel):
+class Ticket(BaseModel):
     id: str
     project_id: str
     title: str
     description: Optional[str] = None
-    status: FeatureStatus = FeatureStatus.BACKLOG
+    status: TicketStatus = TicketStatus.BACKLOG
     priority: Priority = Priority.MEDIUM
     created_at: datetime
     started_at: Optional[datetime] = None
@@ -82,11 +82,11 @@ class Feature(BaseModel):
     metadata: Optional[dict[str, Any]] = None  # All other rich data
 
 
-class FeatureCreate(BaseModel):
+class TicketCreate(BaseModel):
     project_id: str
     title: str
     description: Optional[str] = None
-    status: FeatureStatus = FeatureStatus.BACKLOG
+    status: TicketStatus = TicketStatus.BACKLOG
     priority: Priority = Priority.MEDIUM
     assignees: Optional[list[str]] = None
     tags: Optional[list[str]] = None
@@ -96,10 +96,10 @@ class FeatureCreate(BaseModel):
     metadata: Optional[dict[str, Any]] = None
 
 
-class FeatureUpdate(BaseModel):
+class TicketUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
-    status: Optional[FeatureStatus] = None
+    status: Optional[TicketStatus] = None
     priority: Optional[Priority] = None
     assignees: Optional[list[str]] = None
     tags: Optional[list[str]] = None
@@ -111,7 +111,7 @@ class FeatureUpdate(BaseModel):
 
 class Task(BaseModel):
     id: str
-    feature_id: str
+    ticket_id: str
     title: str
     details: Optional[str] = None
     status: TaskStatus = TaskStatus.PENDING
@@ -125,7 +125,7 @@ class Task(BaseModel):
 
 
 class TaskCreate(BaseModel):
-    feature_id: str
+    ticket_id: str
     title: str
     details: Optional[str] = None
     status: TaskStatus = TaskStatus.PENDING
@@ -168,10 +168,10 @@ class TaskView(BaseModel):
     complexity: Complexity = Complexity.MEDIUM
 
 
-class FeatureView(BaseModel):
+class TicketView(BaseModel):
     id: str
     title: str
-    status: FeatureStatus
+    status: TicketStatus
     priority: Priority
     tags: Optional[list[str]] = None
     task_count: int = 0
@@ -183,9 +183,9 @@ class ProjectView(BaseModel):
     id: str
     name: str
     description: Optional[str] = None
-    feature_count: int = 0
-    features_done: int = 0
-    features: list[FeatureView] = Field(default_factory=list)
+    ticket_count: int = 0
+    tickets_done: int = 0
+    tickets: list[TicketView] = Field(default_factory=list)
 
 
 class OrgView(BaseModel):

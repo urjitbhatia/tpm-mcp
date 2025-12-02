@@ -169,34 +169,34 @@ def json_root(tmp_path):
 
 class TestExtractHelpers:
     def test_extract_acceptance_criteria_list(self):
-        feature = {"acceptanceCriteria": ["Criteria 1", "Criteria 2"]}
-        result = extract_acceptance_criteria(feature)
+        ticket = {"acceptanceCriteria": ["Criteria 1", "Criteria 2"]}
+        result = extract_acceptance_criteria(ticket)
         assert result == ["Criteria 1", "Criteria 2"]
 
     def test_extract_acceptance_criteria_dict(self):
-        feature = {
+        ticket = {
             "acceptanceCriteria": {
                 "phase1": ["P1 Criteria 1", "P1 Criteria 2"],
                 "phase2": ["P2 Criteria 1"]
             }
         }
-        result = extract_acceptance_criteria(feature)
+        result = extract_acceptance_criteria(ticket)
         assert len(result) == 3
         assert "[phase1] P1 Criteria 1" in result
         assert "[phase2] P2 Criteria 1" in result
 
     def test_extract_acceptance_criteria_none(self):
-        feature = {}
-        result = extract_acceptance_criteria(feature)
+        ticket = {}
+        result = extract_acceptance_criteria(ticket)
         assert result is None
 
     def test_extract_metadata(self):
-        feature = {
+        ticket = {
             "architecture": {"decision": "Test"},
             "implementationPlan": {"phase1": {}},
             "title": "Should not be in metadata"
         }
-        result = extract_metadata(feature)
+        result = extract_metadata(ticket)
         assert "architecture" in result
         assert "implementationPlan" in result
         assert "title" not in result
@@ -221,24 +221,24 @@ class TestMigration:
         assert "Backend" in names
         assert "Frontend" in names
 
-    def test_migrate_creates_features(self, db, json_root):
+    def test_migrate_creates_tickets(self, db, json_root):
         stats = migrate_from_json(json_root, db)
 
-        assert stats["features"] == 4  # 3 in backend + 1 in frontend
-        features = db.list_features()
-        assert len(features) == 4
+        assert stats["tickets"] == 4  # 3 in backend + 1 in frontend
+        tickets = db.list_tickets()
+        assert len(tickets) == 4
 
-        # Check specific feature
-        feat1 = db.get_feature("FEAT-001")
-        assert feat1 is not None
-        assert feat1.title == "Test Feature 1"
-        assert feat1.status.value == "done"
-        assert feat1.priority.value == "high"
-        assert feat1.assignees == ["Staff Engineer"]
-        assert feat1.tags == ["api", "backend"]
-        assert feat1.acceptance_criteria == ["Criteria 1", "Criteria 2"]
-        assert feat1.metadata is not None
-        assert "architecture" in feat1.metadata
+        # Check specific ticket
+        ticket1 = db.get_ticket("FEAT-001")
+        assert ticket1 is not None
+        assert ticket1.title == "Test Feature 1"
+        assert ticket1.status.value == "done"
+        assert ticket1.priority.value == "high"
+        assert ticket1.assignees == ["Staff Engineer"]
+        assert ticket1.tags == ["api", "backend"]
+        assert ticket1.acceptance_criteria == ["Criteria 1", "Criteria 2"]
+        assert ticket1.metadata is not None
+        assert "architecture" in ticket1.metadata
 
     def test_migrate_creates_tasks_from_implementation_plan(self, db, json_root):
         stats = migrate_from_json(json_root, db)
@@ -265,7 +265,7 @@ class TestMigration:
         stats = migrate_from_json(json_root, db)
 
         assert stats["notes"] == 2  # Two notes for FEAT-001
-        notes = db.get_notes("feature", "FEAT-001")
+        notes = db.get_notes("ticket", "FEAT-001")
         assert len(notes) == 2
         contents = {n.content for n in notes}
         assert "First note" in contents
@@ -275,7 +275,7 @@ class TestMigration:
         """Test that ISSUE- prefixed IDs are preserved."""
         stats = migrate_from_json(json_root, db)
 
-        issue = db.get_feature("ISSUE-001")
+        issue = db.get_ticket("ISSUE-001")
         assert issue is not None
         assert issue.title == "Bug Fix"
         assert issue.priority.value == "critical"
@@ -284,20 +284,20 @@ class TestMigration:
         """Test that dict-style acceptanceCriteria is flattened."""
         stats = migrate_from_json(json_root, db)
 
-        feat = db.get_feature("FEAT-FE-001")
-        assert feat is not None
-        assert feat.acceptance_criteria is not None
-        assert len(feat.acceptance_criteria) == 4
+        ticket = db.get_ticket("FEAT-FE-001")
+        assert ticket is not None
+        assert ticket.acceptance_criteria is not None
+        assert len(ticket.acceptance_criteria) == 4
         # Should have phase prefixes
-        assert any("[phase1]" in c for c in feat.acceptance_criteria)
-        assert any("[phase2]" in c for c in feat.acceptance_criteria)
+        assert any("[phase1]" in c for c in ticket.acceptance_criteria)
+        assert any("[phase2]" in c for c in ticket.acceptance_criteria)
 
     def test_migrate_stats_are_accurate(self, db, json_root):
         stats = migrate_from_json(json_root, db)
 
         assert stats["orgs"] == 1
         assert stats["projects"] == 2
-        assert stats["features"] == 4
+        assert stats["tickets"] == 4
         assert stats["tasks"] == 4  # 2 from phase1 + 2 subtasks
         assert stats["notes"] == 2
         assert len(stats["errors"]) == 0
@@ -329,7 +329,7 @@ class TestMigrationRealData:
         # Basic sanity checks
         assert stats["orgs"] >= 1
         assert stats["projects"] >= 1
-        assert stats["features"] >= 1
+        assert stats["tickets"] >= 1
         assert len(stats["errors"]) == 0, f"Migration errors: {stats['errors']}"
 
         # Verify roadmap view works
