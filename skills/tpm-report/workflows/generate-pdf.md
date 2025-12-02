@@ -49,6 +49,8 @@ Save the HTML to a temporary file in the project directory:
 
 If Playwright MCP is available:
 
+IMPORTANT: Use it in headless mode if possible otherwise default to normal mode.
+
 ```javascript
 // Navigate to the HTML file
 browser_navigate(url="file://{absolute_path_to_html}")
@@ -66,7 +68,7 @@ await page.pdf({
 
 ### 6. Clean Up (Optional)
 
-Remove the temporary HTML file if not needed:
+Remove the temporary HTML file if not needed (Ask the user for confirmation):
 ```
 rm {project_root}/project-status-report.html
 ```

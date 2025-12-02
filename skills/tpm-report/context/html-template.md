@@ -10,7 +10,7 @@ This document contains the HTML/CSS template structure for generating profession
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{Project Name} Status Report</title>
+    <title>{Project Name} Status Report {Month Day, Year} | {Organization Name}</title>
     <style>
         /* === Base Styles === */
         * {
@@ -110,6 +110,39 @@ This document contains the HTML/CSS template structure for generating profession
             background: linear-gradient(90deg, #667eea, #764ba2);
         }
 
+        /* === Status Summary === */
+        .status-summary {
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+            margin-top: 20px;
+            padding-top: 16px;
+            border-top: 1px solid #e8e8f0;
+        }
+
+        .status-summary .status-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .status-summary .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .status-summary .status-dot.done { background: #28a745; }
+        .status-summary .status-dot.progress { background: #ffc107; }
+        .status-summary .status-dot.backlog { background: #6c757d; }
+
+        .status-summary .status-count {
+            font-weight: 600;
+            color: #1a1a2e;
+        }
+
         /* === Section Cards === */
         .section {
             background: white;
@@ -148,6 +181,10 @@ This document contains the HTML/CSS template structure for generating profession
             margin-bottom: 20px;
         }
 
+        .subsection:last-child {
+            margin-bottom: 0;
+        }
+
         .subsection-title {
             font-size: 0.9rem;
             font-weight: 600;
@@ -164,8 +201,8 @@ This document contains the HTML/CSS template structure for generating profession
 
         .ticket-item {
             display: flex;
-            align-items: flex-start;
-            padding: 10px 0;
+            align-items: center;
+            padding: 8px 0;
             border-bottom: 1px solid #f5f5f8;
         }
 
@@ -174,15 +211,15 @@ This document contains the HTML/CSS template structure for generating profession
         }
 
         .ticket-status {
-            width: 24px;
-            height: 24px;
+            width: 20px;
+            height: 20px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin-right: 12px;
+            margin-right: 10px;
             flex-shrink: 0;
-            font-size: 14px;
+            font-size: 12px;
         }
 
         .status-done {
@@ -202,35 +239,40 @@ This document contains the HTML/CSS template structure for generating profession
 
         .ticket-content {
             flex: 1;
+            display: flex;
+            align-items: baseline;
+            flex-wrap: wrap;
+            gap: 6px;
         }
 
         .ticket-id {
             font-size: 0.75rem;
             color: #888;
             font-family: monospace;
+            background: #f5f5f8;
+            padding: 2px 6px;
+            border-radius: 4px;
         }
 
         .ticket-title {
-            font-size: 0.95rem;
+            font-size: 0.9rem;
             color: #1a1a2e;
         }
 
         .ticket-meta {
             font-size: 0.8rem;
             color: #888;
-            margin-top: 4px;
+            width: 100%;
+            padding-left: 0;
         }
 
-        /* === Category Groups === */
-        .category-group {
-            margin-bottom: 16px;
+        .priority-critical {
+            color: #dc3545;
+            font-weight: 600;
         }
 
-        .category-label {
-            font-size: 0.8rem;
-            color: #999;
-            margin-bottom: 8px;
-            padding-left: 36px;
+        .priority-high {
+            color: #fd7e14;
         }
 
         /* === Milestones === */
@@ -241,19 +283,23 @@ This document contains the HTML/CSS template structure for generating profession
         .milestone-item {
             display: flex;
             align-items: center;
-            padding: 12px 16px;
+            padding: 10px 14px;
             background: #f8f9fc;
             border-radius: 8px;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
+        }
+
+        .milestone-item:last-child {
+            margin-bottom: 0;
         }
 
         .milestone-icon {
-            margin-right: 12px;
-            font-size: 1.2rem;
+            margin-right: 10px;
+            font-size: 1rem;
         }
 
         .milestone-text {
-            font-size: 0.95rem;
+            font-size: 0.9rem;
             color: #1a1a2e;
         }
 
@@ -270,40 +316,55 @@ This document contains the HTML/CSS template structure for generating profession
         .blocker-item {
             display: flex;
             align-items: flex-start;
-            padding: 12px 16px;
+            padding: 10px 14px;
             background: white;
             border-radius: 8px;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
             border-left: 3px solid #e67e22;
+            font-size: 0.9rem;
+        }
+
+        .blocker-item:last-child {
+            margin-bottom: 0;
         }
 
         .blocker-item .icon {
-            margin-right: 12px;
-            font-size: 1.1rem;
+            margin-right: 10px;
+            font-size: 1rem;
         }
 
         /* === Footer === */
         .footer {
             text-align: center;
-            padding: 20px;
+            padding: 16px;
             color: #888;
-            font-size: 0.85rem;
-            margin-top: 30px;
+            font-size: 0.8rem;
+            margin-top: 24px;
             border-top: 1px solid #eee;
         }
 
+        /* === Compact Mode === */
+        .compact .section { padding: 16px; margin-bottom: 16px; }
+        .compact .section-header { margin-bottom: 14px; padding-bottom: 10px; }
+        .compact .subsection { margin-bottom: 14px; }
+        .compact .ticket-item { padding: 6px 0; }
+        .compact .ticket-title { font-size: 0.85rem; }
+        .compact .milestone-item { padding: 8px 12px; margin-bottom: 6px; }
+        .compact .blocker-item { padding: 8px 12px; margin-bottom: 6px; }
+        .compact .progress-section { padding: 16px; }
+        .compact .progress-item { padding: 14px; }
+        .compact .header { padding: 20px; margin-bottom: 20px; }
+        .compact .header h1 { font-size: 1.8rem; }
+
         /* === Print Styles === */
         @media print {
-            body {
-                padding: 20px;
-            }
-            .section {
-                break-inside: avoid;
-            }
+            body { padding: 20px; }
+            .section { break-inside: avoid; }
         }
     </style>
 </head>
 <body>
+    <!-- Add class="compact" to body for dense reports -->
     <!-- Content sections go here -->
 </body>
 </html>
@@ -341,11 +402,30 @@ This document contains the HTML/CSS template structure for generating profession
             </div>
         </div>
     </div>
+    <!-- Status Summary replaces the chart section -->
+    <div class="status-summary">
+        <div class="status-item">
+            <span class="status-dot done"></span>
+            <span>Done: <span class="status-count">{done_count}</span></span>
+        </div>
+        <div class="status-item">
+            <span class="status-dot progress"></span>
+            <span>In Progress: <span class="status-count">{progress_count}</span></span>
+        </div>
+        <div class="status-item">
+            <span class="status-dot backlog"></span>
+            <span>Backlog: <span class="status-count">{backlog_count}</span></span>
+        </div>
+    </div>
 </div>
 ```
 
 ### Project Section
+
+**Repeat this section for each project in the TPM data.** The template is project-agnostic - iterate over all projects and generate one card per project.
+
 ```html
+<!-- Repeat for each project -->
 <div class="section">
     <div class="section-header">
         <h2>{Project Name}</h2>
@@ -353,36 +433,60 @@ This document contains the HTML/CSS template structure for generating profession
     </div>
 
     <div class="subsection">
-        <div class="subsection-title">Completed</div>
+        <div class="subsection-title">Completed ({count})</div>
         <ul class="ticket-list">
-            <!-- Repeat for each completed ticket -->
             <li class="ticket-item">
                 <span class="ticket-status status-done">&#10003;</span>
                 <div class="ticket-content">
                     <span class="ticket-id">{TICKET-ID}</span>
-                    <div class="ticket-title">{Ticket Title}</div>
-                    <div class="ticket-meta">{Optional metadata}</div>
+                    <span class="ticket-title">{Ticket Title}</span>
+                </div>
+            </li>
+            <!-- For long titles, truncate with ellipsis -->
+            <li class="ticket-item">
+                <span class="ticket-status status-done">&#10003;</span>
+                <div class="ticket-content">
+                    <span class="ticket-id">{TICKET-ID}</span>
+                    <span class="ticket-title">Country Reports - UI Drift from Prototype...</span>
                 </div>
             </li>
         </ul>
     </div>
 
     <div class="subsection">
-        <div class="subsection-title">In Progress</div>
+        <div class="subsection-title">In Progress ({count})</div>
         <ul class="ticket-list">
-            <!-- Repeat for each in-progress ticket -->
             <li class="ticket-item">
                 <span class="ticket-status status-progress">&#9679;</span>
                 <div class="ticket-content">
                     <span class="ticket-id">{TICKET-ID}</span>
-                    <div class="ticket-title">{Ticket Title}</div>
+                    <span class="ticket-title">{Ticket Title}</span>
                     <div class="ticket-meta">{X}/{Y} subtasks completed</div>
+                </div>
+            </li>
+        </ul>
+    </div>
+
+    <div class="subsection">
+        <div class="subsection-title">Backlog ({count})</div>
+        <ul class="ticket-list">
+            <li class="ticket-item">
+                <span class="ticket-status status-backlog">&#9675;</span>
+                <div class="ticket-content">
+                    <span class="ticket-id">{TICKET-ID}</span>
+                    <span class="ticket-title">{Ticket Title}</span>
+                    <div class="ticket-meta priority-high">High Priority</div>
                 </div>
             </li>
         </ul>
     </div>
 </div>
 ```
+
+**Guidelines:**
+- List all tickets individually for consistency across projects
+- Truncate long titles with ellipsis (`...`) to keep lines concise
+- Include subtask counts in `.ticket-meta` when relevant
 
 ### Milestones Section
 ```html
@@ -433,6 +537,25 @@ This document contains the HTML/CSS template structure for generating profession
 | In Progress | `&#9679;` (filled circle) | `status-progress` |
 | Backlog | `&#9675;` (empty circle) | `status-backlog` |
 | Warning | `&#9888;` (warning triangle) | - |
+
+## Compact Mode
+
+For dense reports with many items, add `class="compact"` to the body tag:
+
+```html
+<body class="compact">
+```
+
+This reduces padding, margins, and font sizes throughout the report for a more condensed view.
+
+## Priority Classes
+
+Add these classes to `.ticket-meta` for priority highlighting:
+
+| Priority | Class | Color |
+|----------|-------|-------|
+| Critical | `priority-critical` | Red (#dc3545) |
+| High | `priority-high` | Orange (#fd7e14) |
 
 ## Customization Variables
 

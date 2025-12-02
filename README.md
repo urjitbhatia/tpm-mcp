@@ -292,7 +292,35 @@ Claude: [Fetches roadmap data, generates styled HTML, converts to PDF]
 ### Prerequisites
 
 - **tpm-mcp**: This MCP server (for `roadmap_view` data)
-- **Playwright MCP** (recommended): For automatic HTML → PDF conversion
+- **Playwright MCP**: For automatic HTML → PDF conversion
+
+#### Installing Playwright MCP
+
+```bash
+# Add Playwright MCP (headless mode recommended for PDF generation)
+claude mcp add playwright-headless --scope user -- npx @playwright/mcp@latest --headless
+
+# Or with isolated mode (separate browser profile)
+claude mcp add playwright-headless --scope user -- npx @playwright/mcp@latest --isolated --headless
+```
+
+<details>
+<summary>Or manually edit settings.json</summary>
+
+Add to `~/.claude/settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "playwright-headless": {
+      "command": "npx",
+      "args": ["@playwright/mcp@latest", "--headless"]
+    }
+  }
+}
+```
+
+</details>
 
 Without Playwright, Claude will generate an HTML file you can manually print to PDF.
 
