@@ -42,7 +42,7 @@ Claude: Here's your current roadmap:
 # Roadmap Summary
 **Stats**: 3/8 tickets, 12/25 tasks (48% complete)
 
-## MyCompany
+## ExampleOrg
 ### backend-api
 Tickets: 3/5 done
 
@@ -64,14 +64,14 @@ Tickets: 3/5 done
 | **Natural** | Just talk - "I finished the auth feature" |
 | **Hierarchical** | Orgs → Projects → Tickets → Tasks |
 | **Rich Metadata** | Priority, tags, assignees, complexity, notes |
-| **Migration** | Import from JSON project trackers |
+| **Export/Import** | Full JSON export/import for backup and migration |
 
 ## Installation
 
 ### 1. Clone & Install
 
 ```bash
-git clone https://github.com/youruser/tpm-mcp.git
+git clone https://github.com/yourusername/tpm-mcp.git
 cd tpm-mcp
 uv venv && uv pip install -e .
 ```
@@ -217,13 +217,117 @@ Organization
 
 **Priorities**: `critical` > `high` > `medium` > `low`
 
-## Migration
+## Export & Import
 
-Coming from a JSON-based tracker?
+Export and import your project data to JSON for backup, restore, or interoperability with other tools.
+
+### Export Data
+
+Export all your project data to JSON:
+
+```bash
+# Export to stdout
+uv run tpm-json-export
+
+# Export to file
+uv run tpm-json-export -o backup.json
+
+# Export from custom database
+uv run tpm-json-export --db-path /path/to/custom.db -o backup.json
+```
+
+### Import Data
+
+Import data from a JSON export file to recreate your database or restore from backup:
+
+```bash
+# Validate JSON file without importing
+uv run tpm-json-import --dry-run backup.json
+
+# Import into default database
+uv run tpm-json-import backup.json
+
+# Import into custom database
+uv run tpm-json-import --db-path /path/to/db.db backup.json
+
+# Clear existing data and import
+uv run tpm-json-import --clear backup.json
+```
+
+The JSON format includes all data: organizations, projects, tickets, tasks, notes, and task dependencies. Use cases:
+
+- **Backup & Restore**: Export your data regularly, restore if database gets corrupted
+- **Recreate Database**: Start fresh by importing from a previous export
+- **Export to Other Tools**: Use the JSON format to migrate to other project management tools
+- **Sync Between Machines**: Export on one machine, import on another
+
+## PDF Status Reports
+
+Generate beautiful, shareable PDF reports from your project data.
+
+<p align="center">
+  <img src="assets/sample-report.png" alt="Sample PDF Report" width="500" />
+</p>
+
+<details>
+<summary><strong>Setup & Usage</strong></summary>
+
+### Using the Report Skill
+
+The `tpm-report` skill teaches Claude how to generate professional status reports. To enable it:
+
+```bash
+# Copy the skill to your project
+cp -r /path/to/tpm-mcp/skills/tpm-report .claude/skills/
+```
+
+Then ask Claude:
+```
+You: Generate a project status report
+
+Claude: [Fetches roadmap data, generates styled HTML, converts to PDF]
+        PDF report saved to: Project-Status-2025-12-02.pdf
+```
+
+### Prerequisites
+
+- **tpm-mcp**: This MCP server (for `roadmap_view` data)
+- **Playwright MCP** (recommended): For automatic HTML → PDF conversion
+
+Without Playwright, Claude will generate an HTML file you can manually print to PDF.
+
+### What's in the Report?
+
+| Section | Contents |
+|---------|----------|
+| **Progress Overview** | Visual progress bars for tickets and tasks |
+| **Project Breakdown** | Completed, in-progress, and backlog items per project |
+| **Key Milestones** | Major achievements and current focus |
+| **Blockers & Risks** | Items requiring attention |
+
+### Manual Report Generation
+
+If you prefer manual control, use `roadmap_view` with JSON format:
+
+```
+You: :TPM: show me the roadmap as JSON
+
+Claude: [Returns structured JSON data]
+```
+
+Then use your preferred tool to format the output.
+
+</details>
+
+## Migration from Legacy Trackers
+
+Coming from a legacy JSON-based tracker with a different format?
 
 ```bash
 uv run tpm-migrate /path/to/old-tracker
 ```
+
+This tool converts from older JSON tracker formats. For standard export/import, use `tpm-json-export` and `tpm-json-import` above.
 
 ## Development
 

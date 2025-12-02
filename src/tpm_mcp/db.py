@@ -1,18 +1,34 @@
 """SQLite database operations for project tracking."""
+
 import json
 import sqlite3
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from .models import (
-    Org, OrgCreate,
-    Project, ProjectCreate,
-    Ticket, TicketCreate, TicketUpdate, TicketStatus,
-    Task, TaskCreate, TaskUpdate, TaskStatus, Priority, Complexity,
-    Note, NoteCreate,
-    RoadmapView, OrgView, ProjectView, TicketView, TaskView,
+    Complexity,
+    Note,
+    NoteCreate,
+    Org,
+    OrgCreate,
+    OrgView,
+    Priority,
+    Project,
+    ProjectCreate,
+    ProjectView,
+    RoadmapView,
+    Task,
+    TaskCreate,
+    TaskStatus,
+    TaskUpdate,
+    TaskView,
+    Ticket,
+    TicketCreate,
+    TicketStatus,
+    TicketUpdate,
+    TicketView,
 )
 
 # Default database path
@@ -26,7 +42,7 @@ def get_db_path() -> Path:
     return db_path
 
 
-def init_db(db_path: Optional[Path] = None) -> sqlite3.Connection:
+def init_db(db_path: Path | None = None) -> sqlite3.Connection:
     """Initialize database with schema."""
     db_path = db_path or get_db_path()
     conn = sqlite3.connect(str(db_path), check_same_thread=False)
@@ -40,14 +56,14 @@ def init_db(db_path: Optional[Path] = None) -> sqlite3.Connection:
     return conn
 
 
-def _to_json(value: Any) -> Optional[str]:
+def _to_json(value: Any) -> str | None:
     """Convert a value to JSON string for storage."""
     if value is None:
         return None
     return json.dumps(value)
 
 
-def _from_json(value: Optional[str]) -> Any:
+def _from_json(value: str | None) -> Any:
     """Parse a JSON string from storage."""
     if value is None:
         return None
@@ -74,7 +90,7 @@ def _normalize_task_status(status: str) -> str:
 class TrackerDB:
     """Database operations for project tracking."""
 
-    def __init__(self, db_path: Optional[Path] = None):
+    def __init__(self, db_path: Path | None = None):
         self.conn = init_db(db_path)
 
     def _gen_id(self) -> str:
@@ -89,35 +105,34 @@ class TrackerDB:
         id = self._gen_id()
         now = self._now()
         self.conn.execute(
-            "INSERT INTO orgs (id, name, created_at) VALUES (?, ?, ?)",
-            (id, data.name, now)
+            "INSERT INTO orgs (id, name, created_at) VALUES (?, ?, ?)", (id, data.name, now)
         )
         self.conn.commit()
         return Org(id=id, name=data.name, created_at=datetime.fromisoformat(now))
 
-    def create_org_with_id(self, id: str, name: str, created_at: Optional[str] = None) -> Org:
+    def create_org_with_id(self, id: str, name: str, created_at: str | None = None) -> Org:
         """Create org with specific ID (for migration)."""
         now = created_at or self._now()
         self.conn.execute(
-            "INSERT OR REPLACE INTO orgs (id, name, created_at) VALUES (?, ?, ?)",
-            (id, name, now)
+            "INSERT OR REPLACE INTO orgs (id, name, created_at) VALUES (?, ?, ?)", (id, name, now)
         )
         self.conn.commit()
         return Org(id=id, name=name, created_at=datetime.fromisoformat(now))
 
-    def get_org(self, org_id: str) -> Optional[Org]:
-        row = self.conn.execute(
-            "SELECT * FROM orgs WHERE id = ?", (org_id,)
-        ).fetchone()
+    def get_org(self, org_id: str) -> Org | None:
+        row = self.conn.execute("SELECT * FROM orgs WHERE id = ?", (org_id,)).fetchone()
         if row:
-            return Org(id=row["id"], name=row["name"],
-                      created_at=datetime.fromisoformat(row["created_at"]))
+            return Org(
+                id=row["id"], name=row["name"], created_at=datetime.fromisoformat(row["created_at"])
+            )
         return None
 
     def list_orgs(self) -> list[Org]:
         rows = self.conn.execute("SELECT * FROM orgs ORDER BY name").fetchall()
-        return [Org(id=r["id"], name=r["name"],
-                   created_at=datetime.fromisoformat(r["created_at"])) for r in rows]
+        return [
+            Org(id=r["id"], name=r["name"], created_at=datetime.fromisoformat(r["created_at"]))
+            for r in rows
+        ]
 
     # --- Projects ---
 
@@ -127,53 +142,75 @@ class TrackerDB:
         self.conn.execute(
             """INSERT INTO projects (id, org_id, name, repo_path, description, created_at)
                VALUES (?, ?, ?, ?, ?, ?)""",
-            (id, data.org_id, data.name, data.repo_path, data.description, now)
+            (id, data.org_id, data.name, data.repo_path, data.description, now),
         )
         self.conn.commit()
-        return Project(id=id, org_id=data.org_id, name=data.name,
-                      repo_path=data.repo_path, description=data.description,
-                      created_at=datetime.fromisoformat(now))
+        return Project(
+            id=id,
+            org_id=data.org_id,
+            name=data.name,
+            repo_path=data.repo_path,
+            description=data.description,
+            created_at=datetime.fromisoformat(now),
+        )
 
-    def create_project_with_id(self, id: str, org_id: str, name: str,
-                               repo_path: Optional[str] = None,
-                               description: Optional[str] = None,
-                               created_at: Optional[str] = None) -> Project:
+    def create_project_with_id(
+        self,
+        id: str,
+        org_id: str,
+        name: str,
+        repo_path: str | None = None,
+        description: str | None = None,
+        created_at: str | None = None,
+    ) -> Project:
         """Create project with specific ID (for migration)."""
         now = created_at or self._now()
         self.conn.execute(
             """INSERT OR REPLACE INTO projects (id, org_id, name, repo_path, description, created_at)
                VALUES (?, ?, ?, ?, ?, ?)""",
-            (id, org_id, name, repo_path, description, now)
+            (id, org_id, name, repo_path, description, now),
         )
         self.conn.commit()
-        return Project(id=id, org_id=org_id, name=name,
-                      repo_path=repo_path, description=description,
-                      created_at=datetime.fromisoformat(now))
+        return Project(
+            id=id,
+            org_id=org_id,
+            name=name,
+            repo_path=repo_path,
+            description=description,
+            created_at=datetime.fromisoformat(now),
+        )
 
-    def get_project(self, project_id: str) -> Optional[Project]:
-        row = self.conn.execute(
-            "SELECT * FROM projects WHERE id = ?", (project_id,)
-        ).fetchone()
+    def get_project(self, project_id: str) -> Project | None:
+        row = self.conn.execute("SELECT * FROM projects WHERE id = ?", (project_id,)).fetchone()
         if row:
             return Project(
-                id=row["id"], org_id=row["org_id"], name=row["name"],
-                repo_path=row["repo_path"], description=row["description"],
-                created_at=datetime.fromisoformat(row["created_at"])
+                id=row["id"],
+                org_id=row["org_id"],
+                name=row["name"],
+                repo_path=row["repo_path"],
+                description=row["description"],
+                created_at=datetime.fromisoformat(row["created_at"]),
             )
         return None
 
-    def list_projects(self, org_id: Optional[str] = None) -> list[Project]:
+    def list_projects(self, org_id: str | None = None) -> list[Project]:
         if org_id:
             rows = self.conn.execute(
                 "SELECT * FROM projects WHERE org_id = ? ORDER BY name", (org_id,)
             ).fetchall()
         else:
             rows = self.conn.execute("SELECT * FROM projects ORDER BY name").fetchall()
-        return [Project(
-            id=r["id"], org_id=r["org_id"], name=r["name"],
-            repo_path=r["repo_path"], description=r["description"],
-            created_at=datetime.fromisoformat(r["created_at"])
-        ) for r in rows]
+        return [
+            Project(
+                id=r["id"],
+                org_id=r["org_id"],
+                name=r["name"],
+                repo_path=r["repo_path"],
+                description=r["description"],
+                created_at=datetime.fromisoformat(r["created_at"]),
+            )
+            for r in rows
+        ]
 
     # --- Tickets ---
 
@@ -184,32 +221,57 @@ class TrackerDB:
             """INSERT INTO tickets (id, project_id, title, description, status, priority, created_at,
                assignees, tags, related_repos, acceptance_criteria, blockers, metadata)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (id, data.project_id, data.title, data.description,
-             data.status.value, data.priority.value, now,
-             _to_json(data.assignees), _to_json(data.tags), _to_json(data.related_repos),
-             _to_json(data.acceptance_criteria), _to_json(data.blockers), _to_json(data.metadata))
+            (
+                id,
+                data.project_id,
+                data.title,
+                data.description,
+                data.status.value,
+                data.priority.value,
+                now,
+                _to_json(data.assignees),
+                _to_json(data.tags),
+                _to_json(data.related_repos),
+                _to_json(data.acceptance_criteria),
+                _to_json(data.blockers),
+                _to_json(data.metadata),
+            ),
         )
         self.conn.commit()
-        return Ticket(id=id, project_id=data.project_id, title=data.title,
-                      description=data.description, status=data.status,
-                      priority=data.priority, created_at=datetime.fromisoformat(now),
-                      assignees=data.assignees, tags=data.tags, related_repos=data.related_repos,
-                      acceptance_criteria=data.acceptance_criteria, blockers=data.blockers,
-                      metadata=data.metadata)
+        return Ticket(
+            id=id,
+            project_id=data.project_id,
+            title=data.title,
+            description=data.description,
+            status=data.status,
+            priority=data.priority,
+            created_at=datetime.fromisoformat(now),
+            assignees=data.assignees,
+            tags=data.tags,
+            related_repos=data.related_repos,
+            acceptance_criteria=data.acceptance_criteria,
+            blockers=data.blockers,
+            metadata=data.metadata,
+        )
 
-    def create_ticket_with_id(self, id: str, project_id: str, title: str,
-                               description: Optional[str] = None,
-                               status: str = "backlog",
-                               priority: str = "medium",
-                               created_at: Optional[str] = None,
-                               started_at: Optional[str] = None,
-                               completed_at: Optional[str] = None,
-                               assignees: Optional[list] = None,
-                               tags: Optional[list] = None,
-                               related_repos: Optional[list] = None,
-                               acceptance_criteria: Optional[list] = None,
-                               blockers: Optional[list] = None,
-                               metadata: Optional[dict] = None) -> Ticket:
+    def create_ticket_with_id(
+        self,
+        id: str,
+        project_id: str,
+        title: str,
+        description: str | None = None,
+        status: str = "backlog",
+        priority: str = "medium",
+        created_at: str | None = None,
+        started_at: str | None = None,
+        completed_at: str | None = None,
+        assignees: list | None = None,
+        tags: list | None = None,
+        related_repos: list | None = None,
+        acceptance_criteria: list | None = None,
+        blockers: list | None = None,
+        metadata: dict | None = None,
+    ) -> Ticket:
         """Create ticket with specific ID (for migration)."""
         now = created_at or self._now()
         status = _normalize_ticket_status(status)
@@ -218,17 +280,29 @@ class TrackerDB:
                created_at, started_at, completed_at, assignees, tags, related_repos,
                acceptance_criteria, blockers, metadata)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (id, project_id, title, description, status, priority, now, started_at, completed_at,
-             _to_json(assignees), _to_json(tags), _to_json(related_repos),
-             _to_json(acceptance_criteria), _to_json(blockers), _to_json(metadata))
+            (
+                id,
+                project_id,
+                title,
+                description,
+                status,
+                priority,
+                now,
+                started_at,
+                completed_at,
+                _to_json(assignees),
+                _to_json(tags),
+                _to_json(related_repos),
+                _to_json(acceptance_criteria),
+                _to_json(blockers),
+                _to_json(metadata),
+            ),
         )
         self.conn.commit()
         return self.get_ticket(id)
 
-    def get_ticket(self, ticket_id: str) -> Optional[Ticket]:
-        row = self.conn.execute(
-            "SELECT * FROM tickets WHERE id = ?", (ticket_id,)
-        ).fetchone()
+    def get_ticket(self, ticket_id: str) -> Ticket | None:
+        row = self.conn.execute("SELECT * FROM tickets WHERE id = ?", (ticket_id,)).fetchone()
         if row:
             return self._row_to_ticket(row)
         return None
@@ -236,12 +310,17 @@ class TrackerDB:
     def _row_to_ticket(self, row) -> Ticket:
         status = _normalize_ticket_status(row["status"])
         return Ticket(
-            id=row["id"], project_id=row["project_id"], title=row["title"],
-            description=row["description"], status=TicketStatus(status),
+            id=row["id"],
+            project_id=row["project_id"],
+            title=row["title"],
+            description=row["description"],
+            status=TicketStatus(status),
             priority=Priority(row["priority"]),
             created_at=datetime.fromisoformat(row["created_at"]),
             started_at=datetime.fromisoformat(row["started_at"]) if row["started_at"] else None,
-            completed_at=datetime.fromisoformat(row["completed_at"]) if row["completed_at"] else None,
+            completed_at=datetime.fromisoformat(row["completed_at"])
+            if row["completed_at"]
+            else None,
             assignees=_from_json(row["assignees"]),
             tags=_from_json(row["tags"]),
             related_repos=_from_json(row["related_repos"]),
@@ -250,8 +329,9 @@ class TrackerDB:
             metadata=_from_json(row["metadata"]),
         )
 
-    def list_tickets(self, project_id: Optional[str] = None,
-                     status: Optional[TicketStatus] = None) -> list[Ticket]:
+    def list_tickets(
+        self, project_id: str | None = None, status: TicketStatus | None = None
+    ) -> list[Ticket]:
         query = "SELECT * FROM tickets WHERE 1=1"
         params = []
         if project_id:
@@ -264,7 +344,7 @@ class TrackerDB:
         rows = self.conn.execute(query, params).fetchall()
         return [self._row_to_ticket(r) for r in rows]
 
-    def update_ticket(self, ticket_id: str, data: TicketUpdate) -> Optional[Ticket]:
+    def update_ticket(self, ticket_id: str, data: TicketUpdate) -> Ticket | None:
         updates = []
         params = []
         if data.title is not None:
@@ -308,9 +388,7 @@ class TrackerDB:
             return self.get_ticket(ticket_id)
 
         params.append(ticket_id)
-        self.conn.execute(
-            f"UPDATE tickets SET {', '.join(updates)} WHERE id = ?", params
-        )
+        self.conn.execute(f"UPDATE tickets SET {', '.join(updates)} WHERE id = ?", params)
         self.conn.commit()
         return self.get_ticket(ticket_id)
 
@@ -336,25 +414,47 @@ class TrackerDB:
             """INSERT INTO tasks (id, ticket_id, title, details, status, priority, complexity,
                created_at, acceptance_criteria, metadata)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (id, data.ticket_id, data.title, data.details,
-             data.status.value, data.priority.value, data.complexity.value, now,
-             _to_json(data.acceptance_criteria), _to_json(data.metadata))
+            (
+                id,
+                data.ticket_id,
+                data.title,
+                data.details,
+                data.status.value,
+                data.priority.value,
+                data.complexity.value,
+                now,
+                _to_json(data.acceptance_criteria),
+                _to_json(data.metadata),
+            ),
         )
         self.conn.commit()
-        return Task(id=id, ticket_id=data.ticket_id, title=data.title,
-                   details=data.details, status=data.status, priority=data.priority,
-                   complexity=data.complexity, created_at=datetime.fromisoformat(now),
-                   acceptance_criteria=data.acceptance_criteria, metadata=data.metadata)
+        return Task(
+            id=id,
+            ticket_id=data.ticket_id,
+            title=data.title,
+            details=data.details,
+            status=data.status,
+            priority=data.priority,
+            complexity=data.complexity,
+            created_at=datetime.fromisoformat(now),
+            acceptance_criteria=data.acceptance_criteria,
+            metadata=data.metadata,
+        )
 
-    def create_task_with_id(self, id: str, ticket_id: str, title: str,
-                            details: Optional[str] = None,
-                            status: str = "pending",
-                            priority: str = "medium",
-                            complexity: str = "medium",
-                            created_at: Optional[str] = None,
-                            completed_at: Optional[str] = None,
-                            acceptance_criteria: Optional[list] = None,
-                            metadata: Optional[dict] = None) -> Task:
+    def create_task_with_id(
+        self,
+        id: str,
+        ticket_id: str,
+        title: str,
+        details: str | None = None,
+        status: str = "pending",
+        priority: str = "medium",
+        complexity: str = "medium",
+        created_at: str | None = None,
+        completed_at: str | None = None,
+        acceptance_criteria: list | None = None,
+        metadata: dict | None = None,
+    ) -> Task:
         """Create task with specific ID (for migration)."""
         now = created_at or self._now()
         status = _normalize_task_status(status)
@@ -362,16 +462,25 @@ class TrackerDB:
             """INSERT OR REPLACE INTO tasks (id, ticket_id, title, details, status, priority, complexity,
                created_at, completed_at, acceptance_criteria, metadata)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (id, ticket_id, title, details, status, priority, complexity, now, completed_at,
-             _to_json(acceptance_criteria), _to_json(metadata))
+            (
+                id,
+                ticket_id,
+                title,
+                details,
+                status,
+                priority,
+                complexity,
+                now,
+                completed_at,
+                _to_json(acceptance_criteria),
+                _to_json(metadata),
+            ),
         )
         self.conn.commit()
         return self.get_task(id)
 
-    def get_task(self, task_id: str) -> Optional[Task]:
-        row = self.conn.execute(
-            "SELECT * FROM tasks WHERE id = ?", (task_id,)
-        ).fetchone()
+    def get_task(self, task_id: str) -> Task | None:
+        row = self.conn.execute("SELECT * FROM tasks WHERE id = ?", (task_id,)).fetchone()
         if row:
             return self._row_to_task(row)
         return None
@@ -379,18 +488,24 @@ class TrackerDB:
     def _row_to_task(self, row) -> Task:
         status = _normalize_task_status(row["status"])
         return Task(
-            id=row["id"], ticket_id=row["ticket_id"], title=row["title"],
-            details=row["details"], status=TaskStatus(status),
+            id=row["id"],
+            ticket_id=row["ticket_id"],
+            title=row["title"],
+            details=row["details"],
+            status=TaskStatus(status),
             priority=Priority(row["priority"] or "medium"),
             complexity=Complexity(row["complexity"] or "medium"),
             created_at=datetime.fromisoformat(row["created_at"]),
-            completed_at=datetime.fromisoformat(row["completed_at"]) if row["completed_at"] else None,
+            completed_at=datetime.fromisoformat(row["completed_at"])
+            if row["completed_at"]
+            else None,
             acceptance_criteria=_from_json(row["acceptance_criteria"]),
             metadata=_from_json(row["metadata"]),
         )
 
-    def list_tasks(self, ticket_id: Optional[str] = None,
-                  status: Optional[TaskStatus] = None) -> list[Task]:
+    def list_tasks(
+        self, ticket_id: str | None = None, status: TaskStatus | None = None
+    ) -> list[Task]:
         query = "SELECT * FROM tasks WHERE 1=1"
         params = []
         if ticket_id:
@@ -403,7 +518,7 @@ class TrackerDB:
         rows = self.conn.execute(query, params).fetchall()
         return [self._row_to_task(r) for r in rows]
 
-    def update_task(self, task_id: str, data: TaskUpdate) -> Optional[Task]:
+    def update_task(self, task_id: str, data: TaskUpdate) -> Task | None:
         updates = []
         params = []
         if data.title is not None:
@@ -435,9 +550,7 @@ class TrackerDB:
             return self.get_task(task_id)
 
         params.append(task_id)
-        self.conn.execute(
-            f"UPDATE tasks SET {', '.join(updates)} WHERE id = ?", params
-        )
+        self.conn.execute(f"UPDATE tasks SET {', '.join(updates)} WHERE id = ?", params)
         self.conn.commit()
         return self.get_task(task_id)
 
@@ -448,7 +561,7 @@ class TrackerDB:
         try:
             self.conn.execute(
                 "INSERT INTO task_dependencies (task_id, depends_on_id) VALUES (?, ?)",
-                (task_id, depends_on_id)
+                (task_id, depends_on_id),
             )
             self.conn.commit()
             return True
@@ -458,8 +571,7 @@ class TrackerDB:
     def get_task_dependencies(self, task_id: str) -> list[str]:
         """Get IDs of tasks that this task depends on."""
         rows = self.conn.execute(
-            "SELECT depends_on_id FROM task_dependencies WHERE task_id = ?",
-            (task_id,)
+            "SELECT depends_on_id FROM task_dependencies WHERE task_id = ?", (task_id,)
         ).fetchall()
         return [r["depends_on_id"] for r in rows]
 
@@ -470,24 +582,36 @@ class TrackerDB:
         now = self._now()
         self.conn.execute(
             "INSERT INTO notes (id, entity_type, entity_id, content, created_at) VALUES (?, ?, ?, ?, ?)",
-            (id, data.entity_type, data.entity_id, data.content, now)
+            (id, data.entity_type, data.entity_id, data.content, now),
         )
         self.conn.commit()
-        return Note(id=id, entity_type=data.entity_type, entity_id=data.entity_id,
-                   content=data.content, created_at=datetime.fromisoformat(now))
+        return Note(
+            id=id,
+            entity_type=data.entity_type,
+            entity_id=data.entity_id,
+            content=data.content,
+            created_at=datetime.fromisoformat(now),
+        )
 
     def get_notes(self, entity_type: str, entity_id: str) -> list[Note]:
         rows = self.conn.execute(
             "SELECT * FROM notes WHERE entity_type = ? AND entity_id = ? ORDER BY created_at",
-            (entity_type, entity_id)
+            (entity_type, entity_id),
         ).fetchall()
-        return [Note(id=r["id"], entity_type=r["entity_type"], entity_id=r["entity_id"],
-                    content=r["content"], created_at=datetime.fromisoformat(r["created_at"]))
-                for r in rows]
+        return [
+            Note(
+                id=r["id"],
+                entity_type=r["entity_type"],
+                entity_id=r["entity_id"],
+                content=r["content"],
+                created_at=datetime.fromisoformat(r["created_at"]),
+            )
+            for r in rows
+        ]
 
     # --- Roadmap View ---
 
-    def get_roadmap(self, org_id: Optional[str] = None) -> RoadmapView:
+    def get_roadmap(self, org_id: str | None = None) -> RoadmapView:
         """Get full roadmap view with stats."""
         orgs = self.list_orgs()
         if org_id:
@@ -511,28 +635,47 @@ class TrackerDB:
                 for ticket in tickets:
                     tasks = self.list_tasks(ticket.id)
                     task_views = [
-                        TaskView(id=t.id, title=t.title, status=t.status,
-                                priority=t.priority, complexity=t.complexity)
+                        TaskView(
+                            id=t.id,
+                            title=t.title,
+                            status=t.status,
+                            priority=t.priority,
+                            complexity=t.complexity,
+                        )
                         for t in tasks
                     ]
-                    ticket_tasks_done = sum(1 for t in tasks if t.status in (TaskStatus.DONE, TaskStatus.COMPLETED))
+                    ticket_tasks_done = sum(
+                        1 for t in tasks if t.status in (TaskStatus.DONE, TaskStatus.COMPLETED)
+                    )
 
-                    ticket_views.append(TicketView(
-                        id=ticket.id, title=ticket.title, status=ticket.status,
-                        priority=ticket.priority, tags=ticket.tags, task_count=len(tasks),
-                        tasks_done=ticket_tasks_done, tasks=task_views
-                    ))
+                    ticket_views.append(
+                        TicketView(
+                            id=ticket.id,
+                            title=ticket.title,
+                            status=ticket.status,
+                            priority=ticket.priority,
+                            tags=ticket.tags,
+                            task_count=len(tasks),
+                            tasks_done=ticket_tasks_done,
+                            tasks=task_views,
+                        )
+                    )
 
                     total_tasks += len(tasks)
                     tasks_done += ticket_tasks_done
                     if ticket.status in (TicketStatus.DONE, TicketStatus.COMPLETED):
                         proj_tickets_done += 1
 
-                project_views.append(ProjectView(
-                    id=proj.id, name=proj.name, description=proj.description,
-                    ticket_count=len(tickets), tickets_done=proj_tickets_done,
-                    tickets=ticket_views
-                ))
+                project_views.append(
+                    ProjectView(
+                        id=proj.id,
+                        name=proj.name,
+                        description=proj.description,
+                        ticket_count=len(tickets),
+                        tickets_done=proj_tickets_done,
+                        tickets=ticket_views,
+                    )
+                )
                 total_tickets += len(tickets)
                 tickets_done += proj_tickets_done
 
@@ -545,6 +688,8 @@ class TrackerDB:
                 "tickets_done": tickets_done,
                 "total_tasks": total_tasks,
                 "tasks_done": tasks_done,
-                "completion_pct": round(tasks_done / total_tasks * 100, 1) if total_tasks > 0 else 0
-            }
+                "completion_pct": round(tasks_done / total_tasks * 100, 1)
+                if total_tasks > 0
+                else 0,
+            },
         )
