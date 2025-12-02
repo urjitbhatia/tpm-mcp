@@ -378,6 +378,17 @@ uv run pytest tests/ -v
 
 MIT - do whatever you want with it.
 
+## Citation
+---
+```
+@software{Bhatia_TPM-MCP_A_Local_2025,
+  author = {Bhatia, Urjit Singh},
+  license = {MIT},
+  title = {{TPM-MCP: A Local Technical Product Manager MCP Server}},
+  url = {https://github.com/urjitbhatia/tpm-mcp},
+  year = {2025}
+}
+```
 ---
 
 <p align="center">

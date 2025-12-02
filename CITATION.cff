@@ -1,0 +1,32 @@
+cff-version: 1.2.0
+title: "TPM-MCP: A Local Technical Product Manager MCP Server"
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+authors:
+  - family-names: "Bhatia"
+    given-names: "Urjit Singh"
+    orcid: "https://orcid.org/0009-0006-7888-8486"
+abstract: >-
+  TPM-MCP provides a local Technical Product Manager MCP Server that allows you to manage your projects and tasks.
+  Features include:
+  - Tracking projects, tickets, tasks, dependencies, notes, blockers, assignees, acceptance criteria, etc
+  - Generating PDF reports of your projects and tasks
+  - Local and secure data store
+  - Agentic setup for automated project management
+keywords:
+  - mcp
+  - mcp-server
+  - local-mcp-server
+  - project-management
+  - python
+  - claude-code
+  - SQLite
+  - agentic-mcp
+  - agents
+license: MIT
+type: software
+version: 1.0.0
+date-released: 2025-12-02
+repository-code: 'https://github.com/urjitbhatia/tpm-mcp'
+url: "https://github.com/urjitbhatia/tpm-mcp"
