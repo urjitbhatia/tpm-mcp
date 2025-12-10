@@ -337,6 +337,22 @@ USE THIS TOOL WHEN:
                 "required": ["entity_type", "entity_id", "content"],
             },
         ),
+        Tool(
+            name="note_list",
+            description="PROJECT MANAGEMENT (TPM): Get notes for a ticket, task, or other entity. Notes are fetched separately to avoid context bleed.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "entity_type": {
+                        "type": "string",
+                        "enum": ["org", "project", "ticket", "task"],
+                        "description": "Type of entity",
+                    },
+                    "entity_id": {"type": "string", "description": "ID of the entity"},
+                },
+                "required": ["entity_type", "entity_id"],
+            },
+        ),
         # Org/Project operations (less frequently used)
         Tool(
             name="org_list",
@@ -449,7 +465,17 @@ async def _handle_tool(name: str, args: dict) -> str:
     if name == "ticket_list":
         status = TicketStatus(args["status"]) if args.get("status") else None
         tickets = db.list_tickets(args.get("project_id"), status)
-        return _json([t.model_dump() for t in tickets])
+        # Return minimal data to avoid context bleed
+        return _json([
+            {
+                "id": t.id,
+                "title": t.title,
+                "status": t.status.value,
+                "priority": t.priority.value,
+                "tags": t.tags,
+            }
+            for t in tickets
+        ])
 
     if name == "ticket_update":
         update = TicketUpdate(
@@ -544,7 +570,18 @@ async def _handle_tool(name: str, args: dict) -> str:
     if name == "task_list":
         status = TaskStatus(args["status"]) if args.get("status") else None
         tasks = db.list_tasks(args.get("ticket_id"), status)
-        return _json([t.model_dump() for t in tasks])
+        # Return minimal data to avoid context bleed
+        return _json([
+            {
+                "id": t.id,
+                "ticket_id": t.ticket_id,
+                "title": t.title,
+                "status": t.status.value,
+                "priority": t.priority.value,
+                "complexity": t.complexity.value,
+            }
+            for t in tasks
+        ])
 
     if name == "task_update":
         update = TaskUpdate(
@@ -569,6 +606,10 @@ async def _handle_tool(name: str, args: dict) -> str:
             )
         )
         return f"Added note: {_json(note)}"
+
+    if name == "note_list":
+        notes = db.get_notes(args["entity_type"], args["entity_id"])
+        return _json([n.model_dump() for n in notes])
 
     # Roadmap view
     if name == "roadmap_view":
@@ -654,8 +695,8 @@ claude mcp add tracker --scope user -- uv run --directory /path/to/tpm-mcp tpm-m
 ## Available Tools
 - `roadmap_view` - Get full project roadmap
 - `ticket_create/update/list/get` - Manage tickets (features, issues, epics)
-- `task_create/update/list` - Manage tasks under tickets
-- `note_add` - Add notes to any entity
+- `task_create/update/list/get` - Manage tasks under tickets
+- `note_add/list` - Add or list notes for any entity
 - `org_list/create` - Manage organizations
 - `project_list/create` - Manage projects
 - `info` - This info page
