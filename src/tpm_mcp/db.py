@@ -99,6 +99,10 @@ class TrackerDB:
     def _now(self) -> str:
         return datetime.utcnow().isoformat()
 
+    def _normalize_id(self, id: str | None) -> str | None:
+        """Normalize ID to lowercase for case-insensitive matching."""
+        return id.lower() if id else None
+
     # --- Orgs ---
 
     def create_org(self, data: OrgCreate) -> Org:
@@ -113,6 +117,15 @@ class TrackerDB:
     def create_org_with_id(self, id: str, name: str, created_at: str | None = None) -> Org:
         """Create org with specific ID (for migration)."""
         now = created_at or self._now()
+        normalized_id = self._normalize_id(id)
+        # Check if a case-insensitive match already exists
+        existing = self.conn.execute(
+            "SELECT id FROM orgs WHERE LOWER(id) = ?", (normalized_id,)
+        ).fetchone()
+        if existing:
+            id = existing["id"]  # Use existing ID (preserves original case if already exists)
+        else:
+            id = normalized_id  # Use normalized ID for new entries
         self.conn.execute(
             "INSERT OR REPLACE INTO orgs (id, name, created_at) VALUES (?, ?, ?)", (id, name, now)
         )
@@ -120,7 +133,8 @@ class TrackerDB:
         return Org(id=id, name=name, created_at=datetime.fromisoformat(now))
 
     def get_org(self, org_id: str) -> Org | None:
-        row = self.conn.execute("SELECT * FROM orgs WHERE id = ?", (org_id,)).fetchone()
+        org_id = self._normalize_id(org_id)
+        row = self.conn.execute("SELECT * FROM orgs WHERE LOWER(id) = ?", (org_id,)).fetchone()
         if row:
             return Org(
                 id=row["id"], name=row["name"], created_at=datetime.fromisoformat(row["created_at"])
@@ -139,15 +153,24 @@ class TrackerDB:
     def create_project(self, data: ProjectCreate) -> Project:
         id = self._gen_id()
         now = self._now()
+        normalized_org_id = self._normalize_id(data.org_id)
+        # Check if a case-insensitive match already exists for org_id
+        existing_org = self.conn.execute(
+            "SELECT id FROM orgs WHERE LOWER(id) = ?", (normalized_org_id,)
+        ).fetchone()
+        if existing_org:
+            org_id = existing_org["id"]  # Use existing org ID
+        else:
+            org_id = normalized_org_id  # Use normalized org_id for new entries
         self.conn.execute(
             """INSERT INTO projects (id, org_id, name, repo_path, description, created_at)
                VALUES (?, ?, ?, ?, ?, ?)""",
-            (id, data.org_id, data.name, data.repo_path, data.description, now),
+            (id, org_id, data.name, data.repo_path, data.description, now),
         )
         self.conn.commit()
         return Project(
             id=id,
-            org_id=data.org_id,
+            org_id=org_id,
             name=data.name,
             repo_path=data.repo_path,
             description=data.description,
@@ -165,6 +188,24 @@ class TrackerDB:
     ) -> Project:
         """Create project with specific ID (for migration)."""
         now = created_at or self._now()
+        normalized_id = self._normalize_id(id)
+        normalized_org_id = self._normalize_id(org_id)
+        # Check if a case-insensitive match already exists for project ID
+        existing_project = self.conn.execute(
+            "SELECT id FROM projects WHERE LOWER(id) = ?", (normalized_id,)
+        ).fetchone()
+        if existing_project:
+            id = existing_project["id"]  # Use existing ID (preserves original case if already exists)
+        else:
+            id = normalized_id  # Use normalized ID for new entries
+        # Check if a case-insensitive match already exists for org_id
+        existing_org = self.conn.execute(
+            "SELECT id FROM orgs WHERE LOWER(id) = ?", (normalized_org_id,)
+        ).fetchone()
+        if existing_org:
+            org_id = existing_org["id"]  # Use existing org ID
+        else:
+            org_id = normalized_org_id  # Use normalized org_id for new entries
         self.conn.execute(
             """INSERT OR REPLACE INTO projects (id, org_id, name, repo_path, description, created_at)
                VALUES (?, ?, ?, ?, ?, ?)""",
@@ -181,7 +222,8 @@ class TrackerDB:
         )
 
     def get_project(self, project_id: str) -> Project | None:
-        row = self.conn.execute("SELECT * FROM projects WHERE id = ?", (project_id,)).fetchone()
+        project_id = self._normalize_id(project_id)
+        row = self.conn.execute("SELECT * FROM projects WHERE LOWER(id) = ?", (project_id,)).fetchone()
         if row:
             return Project(
                 id=row["id"],
@@ -195,8 +237,9 @@ class TrackerDB:
 
     def list_projects(self, org_id: str | None = None) -> list[Project]:
         if org_id:
+            org_id = self._normalize_id(org_id)
             rows = self.conn.execute(
-                "SELECT * FROM projects WHERE org_id = ? ORDER BY name", (org_id,)
+                "SELECT * FROM projects WHERE LOWER(org_id) = ? ORDER BY name", (org_id,)
             ).fetchall()
         else:
             rows = self.conn.execute("SELECT * FROM projects ORDER BY name").fetchall()
@@ -232,11 +275,20 @@ class TrackerDB:
         return max_num + 1
 
     def create_ticket(self, data: TicketCreate) -> Ticket:
+        normalized_project_id = self._normalize_id(data.project_id)
+        # Check if a case-insensitive match already exists for project_id
+        existing_project = self.conn.execute(
+            "SELECT id FROM projects WHERE LOWER(id) = ?", (normalized_project_id,)
+        ).fetchone()
+        if existing_project:
+            project_id = existing_project["id"]  # Use existing project ID
+        else:
+            project_id = normalized_project_id  # Use normalized project_id for new entries
         if data.id:
             id = data.id
         else:
             # Auto-generate ID: PROJECT_ID-NNN (e.g., SENTRY-001, BACKEND-042)
-            project = self.get_project(data.project_id)
+            project = self.get_project(project_id)
             if project:
                 # Use project ID uppercased, replace spaces/special chars with nothing
                 prefix = project.id.upper().replace(" ", "").replace("-", "").replace("_", "")
@@ -251,7 +303,7 @@ class TrackerDB:
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 id,
-                data.project_id,
+                project_id,
                 data.title,
                 data.description,
                 data.status.value,
@@ -268,7 +320,7 @@ class TrackerDB:
         self.conn.commit()
         return Ticket(
             id=id,
-            project_id=data.project_id,
+            project_id=project_id,
             title=data.title,
             description=data.description,
             status=data.status,
@@ -303,6 +355,15 @@ class TrackerDB:
         """Create ticket with specific ID (for migration)."""
         now = created_at or self._now()
         status = _normalize_ticket_status(status)
+        normalized_project_id = self._normalize_id(project_id)
+        # Check if a case-insensitive match already exists for project_id
+        existing_project = self.conn.execute(
+            "SELECT id FROM projects WHERE LOWER(id) = ?", (normalized_project_id,)
+        ).fetchone()
+        if existing_project:
+            project_id = existing_project["id"]  # Use existing project ID
+        else:
+            project_id = normalized_project_id  # Use normalized project_id for new entries
         self.conn.execute(
             """INSERT OR REPLACE INTO tickets (id, project_id, title, description, status, priority,
                created_at, started_at, completed_at, assignees, tags, related_repos,
@@ -363,7 +424,8 @@ class TrackerDB:
         query = "SELECT * FROM tickets WHERE 1=1"
         params = []
         if project_id:
-            query += " AND project_id = ?"
+            project_id = self._normalize_id(project_id)
+            query += " AND LOWER(project_id) = ?"
             params.append(project_id)
         if status:
             query += " AND status = ?"
@@ -643,7 +705,8 @@ class TrackerDB:
         """Get full roadmap view with stats."""
         orgs = self.list_orgs()
         if org_id:
-            orgs = [o for o in orgs if o.id == org_id]
+            org_id = self._normalize_id(org_id)
+            orgs = [o for o in orgs if o.id.lower() == org_id]
 
         org_views = []
         total_tickets = 0

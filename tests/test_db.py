@@ -60,6 +60,25 @@ class TestOrgs:
         assert orgs[0].name == "Alpha"  # Sorted by name
         assert orgs[1].name == "Beta"
 
+    def test_get_org_case_insensitive(self, db):
+        """Test that org lookups are case-insensitive."""
+        org = db.create_org_with_id(id="test-org", name="Test Org")
+        # Try fetching with different cases
+        assert db.get_org("TEST-ORG") is not None
+        assert db.get_org("Test-Org") is not None
+        assert db.get_org("test-org") is not None
+        fetched = db.get_org("TEST-ORG")
+        assert fetched.id == org.id
+        assert fetched.name == org.name
+
+    def test_create_org_with_id_case_insensitive_reuse(self, db):
+        """Test that creating org with different case reuses existing ID."""
+        org1 = db.create_org_with_id(id="test-org", name="Test Org")
+        # Create with different case - should reuse existing
+        org2 = db.create_org_with_id(id="TEST-ORG", name="Test Org Updated")
+        assert org1.id == org2.id  # Should reuse same ID
+        assert org2.name == "Test Org Updated"  # But update name
+
 
 class TestProjects:
     def test_create_project(self, db):
@@ -95,6 +114,42 @@ class TestProjects:
         projects = db.list_projects(org1.id)
         assert len(projects) == 2
         assert all(p.org_id == org1.id for p in projects)
+
+    def test_get_project_case_insensitive(self, db):
+        """Test that project lookups are case-insensitive."""
+        org = db.create_org_with_id(id="test-org", name="Test Org")
+        project = db.create_project_with_id(id="test-project", org_id=org.id, name="Test Project")
+        # Try fetching with different cases
+        assert db.get_project("TEST-PROJECT") is not None
+        assert db.get_project("Test-Project") is not None
+        assert db.get_project("test-project") is not None
+        fetched = db.get_project("TEST-PROJECT")
+        assert fetched.id == project.id
+        assert fetched.name == project.name
+
+    def test_list_projects_case_insensitive(self, db):
+        """Test that filtering projects by org_id is case-insensitive."""
+        org = db.create_org_with_id(id="test-org", name="Test Org")
+        db.create_project(ProjectCreate(org_id=org.id, name="Project A"))
+        db.create_project(ProjectCreate(org_id=org.id, name="Project B"))
+        # Try listing with different cases
+        projects1 = db.list_projects("TEST-ORG")
+        projects2 = db.list_projects("Test-Org")
+        projects3 = db.list_projects("test-org")
+        assert len(projects1) == 2
+        assert len(projects2) == 2
+        assert len(projects3) == 2
+        assert projects1[0].id == projects2[0].id == projects3[0].id
+
+    def test_create_project_with_id_case_insensitive_reuse(self, db):
+        """Test that creating project with different case reuses existing IDs."""
+        org = db.create_org_with_id(id="test-org", name="Test Org")
+        project1 = db.create_project_with_id(id="test-project", org_id=org.id, name="Test Project")
+        # Create with different case - should reuse existing
+        project2 = db.create_project_with_id(id="TEST-PROJECT", org_id="TEST-ORG", name="Test Project Updated")
+        assert project1.id == project2.id  # Should reuse same project ID
+        assert project2.org_id == org.id  # Should reuse same org ID
+        assert project2.name == "Test Project Updated"  # But update name
 
 
 class TestTickets:
@@ -205,6 +260,30 @@ class TestTickets:
         in_progress = db.list_tickets(status=TicketStatus.IN_PROGRESS)
         assert len(in_progress) == 1
         assert in_progress[0].title == "Ticket 2"
+
+    def test_list_tickets_case_insensitive(self, db):
+        """Test that filtering tickets by project_id is case-insensitive."""
+        org = db.create_org_with_id(id="test-org", name="Test Org")
+        project = db.create_project_with_id(id="test-project", org_id=org.id, name="Test Project")
+        db.create_ticket(TicketCreate(project_id=project.id, title="Ticket 1"))
+        db.create_ticket(TicketCreate(project_id=project.id, title="Ticket 2"))
+        # Try listing with different cases
+        tickets1 = db.list_tickets(project_id="TEST-PROJECT")
+        tickets2 = db.list_tickets(project_id="Test-Project")
+        tickets3 = db.list_tickets(project_id="test-project")
+        assert len(tickets1) == 2
+        assert len(tickets2) == 2
+        assert len(tickets3) == 2
+        assert tickets1[0].id == tickets2[0].id == tickets3[0].id
+
+    def test_create_ticket_case_insensitive_project_id(self, db):
+        """Test that creating tickets with different case project_id works."""
+        org = db.create_org_with_id(id="test-org", name="Test Org")
+        project = db.create_project_with_id(id="test-project", org_id=org.id, name="Test Project")
+        # Create ticket with different case project_id
+        ticket = db.create_ticket(TicketCreate(project_id="TEST-PROJECT", title="Test Ticket"))
+        assert ticket.project_id == project.id  # Should use existing project ID
+        assert ticket.title == "Test Ticket"
 
 
 class TestTasks:
@@ -348,6 +427,19 @@ class TestRoadmapView:
 
         assert len(roadmap.orgs) == 1
         assert roadmap.orgs[0].id == org1.id
+
+    def test_get_roadmap_case_insensitive(self, db):
+        """Test that roadmap filtering by org_id is case-insensitive."""
+        org = db.create_org_with_id(id="test-org", name="Test Org")
+        db.create_project(ProjectCreate(org_id=org.id, name="Project 1"))
+        # Try getting roadmap with different cases
+        roadmap1 = db.get_roadmap("TEST-ORG")
+        roadmap2 = db.get_roadmap("Test-Org")
+        roadmap3 = db.get_roadmap("test-org")
+        assert len(roadmap1.orgs) == 1
+        assert len(roadmap2.orgs) == 1
+        assert len(roadmap3.orgs) == 1
+        assert roadmap1.orgs[0].id == roadmap2.orgs[0].id == roadmap3.orgs[0].id
 
 
 class TestJsonSerialization:

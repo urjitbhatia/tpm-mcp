@@ -60,7 +60,7 @@ This replaces the project-tracking-pm agent. Returns all organizations, projects
                 "properties": {
                     "org_id": {
                         "type": "string",
-                        "description": "Filter by organization ID (optional)",
+                        "description": "Filter by organization ID (optional) case-insensitive",
                     },
                     "format": {
                         "type": "string",
@@ -111,7 +111,7 @@ If no id is provided, auto-generates {PROJECT_ID}-{NNN} sequentially (e.g., BACK
                 "properties": {
                     "project_id": {
                         "type": "string",
-                        "description": "Project ID (use project_list to find)",
+                        "description": "Project ID (use project_list to find) case-insensitive",
                     },
                     "id": {
                         "type": "string",
@@ -195,7 +195,7 @@ Use roadmap_view first to find the ticket_id.""",
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "project_id": {"type": "string", "description": "Filter by project ID"},
+                    "project_id": {"type": "string", "description": "Filter by project ID (case-insensitive)"},
                     "status": {
                         "type": "string",
                         "enum": ["backlog", "planned", "in-progress", "done", "blocked"],
@@ -358,7 +358,7 @@ USE THIS TOOL WHEN:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "org_id": {"type": "string", "description": "Filter by organization ID"}
+                    "org_id": {"type": "string", "description": "Filter by organization ID (case-insensitive)"}
                 },
             },
         ),
@@ -368,7 +368,7 @@ USE THIS TOOL WHEN:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "org_id": {"type": "string", "description": "Organization ID"},
+                    "org_id": {"type": "string", "description": "Organization ID (case-insensitive)"},
                     "name": {"type": "string", "description": "Project name"},
                     "repo_path": {"type": "string", "description": "Path to git repo"},
                     "description": {"type": "string", "description": "Project description"},
@@ -398,6 +398,13 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
 
 
 async def _handle_tool(name: str, args: dict) -> str:
+
+    # Special handling for project_id and org_id for case-insensitive matching
+    if "project_id" in args:
+        args["project_id"] = args["project_id"].lower()
+    if "org_id" in args:
+        args["org_id"] = args["org_id"].lower()
+    
     # Orgs
     if name == "org_create":
         org = db.create_org(OrgCreate(name=args["name"]))
