@@ -460,7 +460,8 @@ async def _handle_tool(name: str, args: dict) -> str:
                 assignees=args.get("assignees"),
             )
         )
-        return f"Created ticket: {_json(ticket)}"
+        # Return minimal confirmation to avoid context bleed
+        return f"Created ticket: {ticket.id} - {ticket.title} [{ticket.status.value}]"
 
     if name == "ticket_list":
         status = TicketStatus(args["status"]) if args.get("status") else None
@@ -488,7 +489,8 @@ async def _handle_tool(name: str, args: dict) -> str:
         )
         ticket = db.update_ticket(args["ticket_id"], update)
         if ticket:
-            return f"Updated ticket: {_json(ticket)}"
+            # Return minimal confirmation to avoid context bleed
+            return f"Updated ticket: {ticket.id} - {ticket.title} [{ticket.status.value}]"
         return f"Ticket {args['ticket_id']} not found"
 
     if name == "ticket_get":
@@ -565,7 +567,8 @@ async def _handle_tool(name: str, args: dict) -> str:
                 complexity=Complexity(args.get("complexity", "medium")),
             )
         )
-        return f"Created task: {_json(task)}"
+        # Return minimal confirmation to avoid context bleed
+        return f"Created task: {task.id} - {task.title} [{task.status.value}]"
 
     if name == "task_list":
         status = TaskStatus(args["status"]) if args.get("status") else None
@@ -593,7 +596,8 @@ async def _handle_tool(name: str, args: dict) -> str:
         )
         task = db.update_task(args["task_id"], update)
         if task:
-            return f"Updated task: {_json(task)}"
+            # Return minimal confirmation to avoid context bleed
+            return f"Updated task: {task.id} - {task.title} [{task.status.value}]"
         return f"Task {args['task_id']} not found"
 
     # Notes
