@@ -609,7 +609,8 @@ async def _handle_tool(name: str, args: dict) -> str:
                 content=args["content"],
             )
         )
-        return f"Added note: {_json(note)}"
+        # Return minimal confirmation - note content is echoed back by caller anyway
+        return f"Added note {note.id} to {note.entity_type}/{note.entity_id}"
 
     if name == "note_list":
         notes = db.get_notes(args["entity_type"], args["entity_id"])
