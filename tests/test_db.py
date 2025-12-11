@@ -387,6 +387,27 @@ class TestNotes:
         notes = db.get_notes("org", org.id)
         assert len(notes) == 2
 
+    def test_get_note_by_id(self, db):
+        """Test fetching a single note by ID."""
+        org = db.create_org(OrgCreate(name="Test Org"))
+        note = db.add_note(NoteCreate(
+            entity_type="org",
+            entity_id=org.id,
+            content="This is a long note with detailed content that should be fetched by ID"
+        ))
+
+        fetched = db.get_note(note.id)
+        assert fetched is not None
+        assert fetched.id == note.id
+        assert fetched.content == note.content
+        assert fetched.entity_type == "org"
+        assert fetched.entity_id == org.id
+
+    def test_get_note_not_found(self, db):
+        """Test that get_note returns None for non-existent ID."""
+        fetched = db.get_note("nonexistent-id")
+        assert fetched is None
+
 
 class TestRoadmapView:
     def test_get_roadmap(self, db):
