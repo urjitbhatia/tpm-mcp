@@ -699,6 +699,18 @@ class TrackerDB:
             for r in rows
         ]
 
+    def get_note(self, note_id: str) -> Note | None:
+        row = self.conn.execute("SELECT * FROM notes WHERE id = ?", (note_id,)).fetchone()
+        if row:
+            return Note(
+                id=row["id"],
+                entity_type=row["entity_type"],
+                entity_id=row["entity_id"],
+                content=row["content"],
+                created_at=datetime.fromisoformat(row["created_at"]),
+            )
+        return None
+
     # --- Roadmap View ---
 
     def get_roadmap(self, org_id: str | None = None) -> RoadmapView:

@@ -192,7 +192,7 @@ Use roadmap_view first to find the ticket_id.""",
         ),
         Tool(
             name="ticket_list",
-            description="PROJECT MANAGEMENT: List tickets filtered by project or status. Returns max 20 by default. Use roadmap_view for overview.",
+            description="PROJECT MANAGEMENT: List ticket IDs with status/priority. Returns id, status, priority only - use ticket_get for details.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -204,8 +204,13 @@ Use roadmap_view first to find the ticket_id.""",
                     },
                     "limit": {
                         "type": "integer",
-                        "description": "Max tickets to return (default: 20, max: 100)",
-                        "default": 20,
+                        "description": "Max tickets to return (default: 50, max: 200)",
+                        "default": 50,
+                    },
+                    "offset": {
+                        "type": "integer",
+                        "description": "Skip first N tickets for pagination (default: 0)",
+                        "default": 0,
                     },
                 },
             },
@@ -312,7 +317,7 @@ USE THIS TOOL WHEN:
         ),
         Tool(
             name="task_list",
-            description="PROJECT MANAGEMENT (TPM): List tasks filtered by ticket or status. Returns max 30 by default.",
+            description="PROJECT MANAGEMENT (TPM): List task IDs with status. Returns id, ticket_id, status only - use task_get for details.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -324,8 +329,13 @@ USE THIS TOOL WHEN:
                     },
                     "limit": {
                         "type": "integer",
-                        "description": "Max tasks to return (default: 30, max: 100)",
-                        "default": 30,
+                        "description": "Max tasks to return (default: 50, max: 200)",
+                        "default": 50,
+                    },
+                    "offset": {
+                        "type": "integer",
+                        "description": "Skip first N tasks for pagination (default: 0)",
+                        "default": 0,
                     },
                 },
             },
@@ -350,7 +360,7 @@ USE THIS TOOL WHEN:
         ),
         Tool(
             name="note_list",
-            description="PROJECT MANAGEMENT (TPM): Get notes for a ticket, task, or other entity. Notes are fetched separately to avoid context bleed.",
+            description="PROJECT MANAGEMENT (TPM): List notes for an entity. Returns id, created_at, preview (first 100 chars). Use note_get for full content.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -360,8 +370,24 @@ USE THIS TOOL WHEN:
                         "description": "Type of entity",
                     },
                     "entity_id": {"type": "string", "description": "ID of the entity"},
+                    "limit": {
+                        "type": "integer",
+                        "description": "Max notes to return (default: 20, max: 50)",
+                        "default": 20,
+                    },
                 },
                 "required": ["entity_type", "entity_id"],
+            },
+        ),
+        Tool(
+            name="note_get",
+            description="PROJECT MANAGEMENT (TPM): Get full content of a specific note by ID.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "note_id": {"type": "string", "description": "Note ID"},
+                },
+                "required": ["note_id"],
             },
         ),
         # Org/Project operations (less frequently used)
@@ -477,24 +503,21 @@ async def _handle_tool(name: str, args: dict) -> str:
     if name == "ticket_list":
         status = TicketStatus(args["status"]) if args.get("status") else None
         tickets = db.list_tickets(args.get("project_id"), status)
-        # Apply limit (default 20, max 100)
-        limit = min(args.get("limit", 20), 100)
+        # Apply pagination (default 50, max 200) - items are small now
+        limit = min(args.get("limit", 50), 200)
+        offset = args.get("offset", 0)
         total = len(tickets)
-        tickets = tickets[:limit]
-        # Return minimal data to avoid context bleed
+        tickets = tickets[offset:offset + limit]
+        # Return IDs + essential metadata only - use ticket_get for details
         result = [
             {
                 "id": t.id,
-                "title": t.title,
                 "status": t.status.value,
                 "priority": t.priority.value,
-                "tags": t.tags,
             }
             for t in tickets
         ]
-        if total > limit:
-            return _json({"tickets": result, "showing": limit, "total": total})
-        return _json(result)
+        return _json({"tickets": result, "offset": offset, "limit": limit, "total": total})
 
     if name == "ticket_update":
         update = TicketUpdate(
@@ -591,25 +614,21 @@ async def _handle_tool(name: str, args: dict) -> str:
     if name == "task_list":
         status = TaskStatus(args["status"]) if args.get("status") else None
         tasks = db.list_tasks(args.get("ticket_id"), status)
-        # Apply limit (default 30, max 100)
-        limit = min(args.get("limit", 30), 100)
+        # Apply pagination (default 50, max 200) - items are small now
+        limit = min(args.get("limit", 50), 200)
+        offset = args.get("offset", 0)
         total = len(tasks)
-        tasks = tasks[:limit]
-        # Return minimal data to avoid context bleed
+        tasks = tasks[offset:offset + limit]
+        # Return IDs + essential metadata only - use task_get for details
         result = [
             {
                 "id": t.id,
                 "ticket_id": t.ticket_id,
-                "title": t.title,
                 "status": t.status.value,
-                "priority": t.priority.value,
-                "complexity": t.complexity.value,
             }
             for t in tasks
         ]
-        if total > limit:
-            return _json({"tasks": result, "showing": limit, "total": total})
-        return _json(result)
+        return _json({"tasks": result, "offset": offset, "limit": limit, "total": total})
 
     if name == "task_update":
         update = TaskUpdate(
@@ -639,7 +658,26 @@ async def _handle_tool(name: str, args: dict) -> str:
 
     if name == "note_list":
         notes = db.get_notes(args["entity_type"], args["entity_id"])
-        return _json([n.model_dump() for n in notes])
+        limit = min(args.get("limit", 20), 50)
+        total = len(notes)
+        notes = notes[:limit]
+        # Return IDs + preview only - use note_get for full content
+        result = [
+            {
+                "id": n.id,
+                "created_at": n.created_at.isoformat(),
+                "preview": n.content[:100] + "..." if len(n.content) > 100 else n.content,
+            }
+            for n in notes
+        ]
+        return _json({"notes": result, "limit": limit, "total": total})
+
+    if name == "note_get":
+        # Need to add get_note method to db
+        note = db.get_note(args["note_id"])
+        if not note:
+            return f"Note {args['note_id']} not found"
+        return _json(note.model_dump())
 
     # Roadmap view
     if name == "roadmap_view":
@@ -733,10 +771,16 @@ claude mcp add tracker --scope user -- uv run --directory /path/to/tpm-mcp tpm-m
 ```
 
 ## Available Tools
-- `roadmap_view` - Get full project roadmap
-- `ticket_create/update/list/get` - Manage tickets (features, issues, epics)
-- `task_create/update/list/get` - Manage tasks under tickets
-- `note_add/list` - Add or list notes for any entity
+- `roadmap_view` - Project overview (filterable by project, active_only)
+- `ticket_list` - List ticket IDs with status/priority (paginated)
+- `ticket_get` - Get ticket details (minimal/summary/full)
+- `ticket_create/update` - Create or update tickets
+- `task_list` - List task IDs with status (paginated)
+- `task_get` - Get full task details
+- `task_create/update` - Create or update tasks
+- `note_list` - List notes with preview (paginated)
+- `note_get` - Get full note content
+- `note_add` - Add a note to any entity
 - `org_list/create` - Manage organizations
 - `project_list/create` - Manage projects
 - `info` - This info page
