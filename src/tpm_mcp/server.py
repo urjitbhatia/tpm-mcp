@@ -42,19 +42,16 @@ async def list_tools() -> list[Tool]:
         # Roadmap view - PRIMARY TOOL for checking status
         Tool(
             name="roadmap_view",
-            description="""PROJECT MANAGEMENT (TPM): Get the full project roadmap showing all work status.
+            description="""PROJECT MANAGEMENT (TPM): Get project roadmap showing work status.
 
 USE THIS TOOL WHEN:
 - User asks "what's in progress?" or "what are we working on?"
 - User asks "TPM status", ":TPM:" prefix, or "show me the roadmap"
 - User asks about pending/blocked/completed work
-- User asks "what features are we working on this sprint?"
-- You need to check what features or tasks exist before updating status
 - Starting a work session to see current state
-- After git operations to map changes to tracked tasks
 - User completes work and you need to find related tasks to mark done
 
-This replaces the project-tracking-pm agent. Returns all organizations, projects, features (with status/priority), and their tasks.""",
+Returns summary of organizations, projects, and tickets. Use project_id filter to reduce output.""",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -62,10 +59,14 @@ This replaces the project-tracking-pm agent. Returns all organizations, projects
                         "type": "string",
                         "description": "Filter by organization ID (optional) case-insensitive",
                     },
-                    "format": {
+                    "project_id": {
                         "type": "string",
-                        "enum": ["json", "summary"],
-                        "description": "Output format: 'json' for full data, 'summary' for readable overview (default: summary)",
+                        "description": "Filter by project ID (optional) - recommended to reduce output size",
+                    },
+                    "active_only": {
+                        "type": "boolean",
+                        "description": "Only show non-done tickets (default: true)",
+                        "default": True,
                     },
                 },
             },
@@ -191,7 +192,7 @@ Use roadmap_view first to find the ticket_id.""",
         ),
         Tool(
             name="ticket_list",
-            description="PROJECT MANAGEMENT: List tickets filtered by project or status. Use roadmap_view for full overview.",
+            description="PROJECT MANAGEMENT: List tickets filtered by project or status. Returns max 20 by default. Use roadmap_view for overview.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -200,6 +201,11 @@ Use roadmap_view first to find the ticket_id.""",
                         "type": "string",
                         "enum": ["backlog", "planned", "in-progress", "done", "blocked"],
                         "description": "Filter by status",
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Max tickets to return (default: 20, max: 100)",
+                        "default": 20,
                     },
                 },
             },
@@ -306,7 +312,7 @@ USE THIS TOOL WHEN:
         ),
         Tool(
             name="task_list",
-            description="PROJECT MANAGEMENT (TPM): List tasks filtered by ticket or status.",
+            description="PROJECT MANAGEMENT (TPM): List tasks filtered by ticket or status. Returns max 30 by default.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -315,6 +321,11 @@ USE THIS TOOL WHEN:
                         "type": "string",
                         "enum": ["pending", "in-progress", "done", "blocked"],
                         "description": "Filter by status",
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Max tasks to return (default: 30, max: 100)",
+                        "default": 30,
                     },
                 },
             },
@@ -466,8 +477,12 @@ async def _handle_tool(name: str, args: dict) -> str:
     if name == "ticket_list":
         status = TicketStatus(args["status"]) if args.get("status") else None
         tickets = db.list_tickets(args.get("project_id"), status)
+        # Apply limit (default 20, max 100)
+        limit = min(args.get("limit", 20), 100)
+        total = len(tickets)
+        tickets = tickets[:limit]
         # Return minimal data to avoid context bleed
-        return _json([
+        result = [
             {
                 "id": t.id,
                 "title": t.title,
@@ -476,7 +491,10 @@ async def _handle_tool(name: str, args: dict) -> str:
                 "tags": t.tags,
             }
             for t in tickets
-        ])
+        ]
+        if total > limit:
+            return _json({"tickets": result, "showing": limit, "total": total})
+        return _json(result)
 
     if name == "ticket_update":
         update = TicketUpdate(
@@ -573,8 +591,12 @@ async def _handle_tool(name: str, args: dict) -> str:
     if name == "task_list":
         status = TaskStatus(args["status"]) if args.get("status") else None
         tasks = db.list_tasks(args.get("ticket_id"), status)
+        # Apply limit (default 30, max 100)
+        limit = min(args.get("limit", 30), 100)
+        total = len(tasks)
+        tasks = tasks[:limit]
         # Return minimal data to avoid context bleed
-        return _json([
+        result = [
             {
                 "id": t.id,
                 "ticket_id": t.ticket_id,
@@ -584,7 +606,10 @@ async def _handle_tool(name: str, args: dict) -> str:
                 "complexity": t.complexity.value,
             }
             for t in tasks
-        ])
+        ]
+        if total > limit:
+            return _json({"tasks": result, "showing": limit, "total": total})
+        return _json(result)
 
     if name == "task_update":
         update = TaskUpdate(
@@ -619,12 +644,10 @@ async def _handle_tool(name: str, args: dict) -> str:
     # Roadmap view
     if name == "roadmap_view":
         roadmap = db.get_roadmap(args.get("org_id"))
-        fmt = args.get("format", "summary")
+        project_filter = args.get("project_id", "").lower() if args.get("project_id") else None
+        active_only = args.get("active_only", True)
 
-        if fmt == "json":
-            return _json(roadmap)
-
-        # Summary format
+        # Summary format (always use summary now - json was too large)
         lines = ["# Roadmap Summary\n"]
         lines.append(
             f"**Stats**: {roadmap.stats['tickets_done']}/{roadmap.stats['total_tickets']} tickets, "
@@ -635,12 +658,21 @@ async def _handle_tool(name: str, args: dict) -> str:
         for org in roadmap.orgs:
             lines.append(f"## {org.name}")
             for proj in org.projects:
+                # Filter by project if specified
+                if project_filter and proj.id.lower() != project_filter:
+                    continue
+
                 lines.append(f"\n### {proj.name}")
                 if proj.description:
                     lines.append(f"_{proj.description}_\n")
                 lines.append(f"Tickets: {proj.tickets_done}/{proj.ticket_count} done\n")
 
-                for ticket in proj.tickets:
+                # Filter tickets
+                tickets = proj.tickets
+                if active_only:
+                    tickets = [t for t in tickets if t.status.value != "done"]
+
+                for ticket in tickets[:20]:  # Limit to 20 tickets per project
                     status_icon = {
                         "backlog": "[ ]",
                         "planned": "[P]",
@@ -656,15 +688,18 @@ async def _handle_tool(name: str, args: dict) -> str:
                     lines.append(f"- {status_icon} **{ticket.id}**: {ticket.title} {prio}")
                     lines.append(f"  Tasks: {ticket.tasks_done}/{ticket.task_count}")
 
-                    # Show incomplete tasks
+                    # Show incomplete tasks (max 3)
                     incomplete = [t for t in ticket.tasks if t.status.value != "done"]
-                    for task in incomplete[:5]:  # Show max 5
+                    for task in incomplete[:3]:
                         t_icon = {"pending": "[ ]", "in-progress": "[~]", "blocked": "[!]"}.get(
                             task.status.value, "[ ]"
                         )
                         lines.append(f"    - {t_icon} {task.id}: {task.title}")
-                    if len(incomplete) > 5:
-                        lines.append(f"    - ... and {len(incomplete) - 5} more")
+                    if len(incomplete) > 3:
+                        lines.append(f"    - ... and {len(incomplete) - 3} more")
+
+                if len(tickets) > 20:
+                    lines.append(f"\n_... and {len(tickets) - 20} more tickets_")
 
         return "\n".join(lines)
 
