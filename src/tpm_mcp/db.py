@@ -284,18 +284,19 @@ class TrackerDB:
             project_id = existing_project["id"]  # Use existing project ID
         else:
             project_id = normalized_project_id  # Use normalized project_id for new entries
-        if data.id:
-            id = data.id
+        # Determine prefix for ID generation
+        if data.prefix:
+            # Use provided prefix (e.g., FEAT, ISSUE, INFRA)
+            prefix = data.prefix.upper().replace(" ", "").replace("-", "").replace("_", "")
         else:
-            # Auto-generate ID: PROJECT_ID-NNN (e.g., SENTRY-001, BACKEND-042)
+            # Auto-generate prefix from project ID
             project = self.get_project(project_id)
             if project:
-                # Use project ID uppercased, replace spaces/special chars with nothing
                 prefix = project.id.upper().replace(" ", "").replace("-", "").replace("_", "")
             else:
                 prefix = "TICKET"
-            next_num = self._get_next_ticket_number(prefix)
-            id = f"{prefix}-{next_num:03d}"
+        next_num = self._get_next_ticket_number(prefix)
+        id = f"{prefix}-{next_num:03d}"
         now = self._now()
         self.conn.execute(
             """INSERT INTO tickets (id, project_id, title, description, status, priority, created_at,

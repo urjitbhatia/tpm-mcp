@@ -183,19 +183,27 @@ class TestTickets:
         assert ticket1.tags == ["test", "ticket"]
         assert ticket1.assignees == ["Staff Engineer"]
 
-    def test_create_ticket_custom_id(self, db):
-        """Test that custom ticket ID is used when provided."""
+    def test_create_ticket_custom_prefix(self, db):
+        """Test that custom prefix is used for auto-generated ID."""
         org = db.create_org(OrgCreate(name="Test Org"))
         project = db.create_project(ProjectCreate(org_id=org.id, name="Test Project"))
 
         ticket = db.create_ticket(TicketCreate(
             project_id=project.id,
-            id="FEAT-001",
-            title="Custom ID Ticket",
+            prefix="FEAT",
+            title="Custom Prefix Ticket",
         ))
 
         assert ticket.id == "FEAT-001"
-        assert ticket.title == "Custom ID Ticket"
+        assert ticket.title == "Custom Prefix Ticket"
+
+        # Create another with same prefix - should increment
+        ticket2 = db.create_ticket(TicketCreate(
+            project_id=project.id,
+            prefix="FEAT",
+            title="Another Feature",
+        ))
+        assert ticket2.id == "FEAT-002"
 
     def test_create_ticket_with_id(self, db):
         org = db.create_org_with_id(id="test-org", name="Test Org")

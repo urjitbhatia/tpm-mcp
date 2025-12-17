@@ -86,27 +86,19 @@ USE THIS TOOL WHEN:
 
 Use roadmap_view first to get the project_id. Tickets are high-level work items (like Jira epics/stories).
 
-TICKET ID NAMING CONVENTIONS:
-When providing a custom 'id', use this format: PREFIX-NNN where:
-- PREFIX: 2-8 uppercase letters indicating ticket type and/or project
-- NNN: Sequential 3-digit number (001, 002, etc.)
+ID AUTO-GENERATION:
+IDs are always auto-generated as {PREFIX}-{NNN} (e.g., FEAT-001, ISSUE-042).
+The number is automatically incremented based on existing tickets with that prefix.
 
-Standard prefixes by type:
-- FEAT-NNN: New features or capabilities
-- ISSUE-NNN: Bugs, problems, or issues to fix
-- TASK-NNN: General tasks or chores
-- INFRA-NNN: Infrastructure or DevOps work
-- DOC-NNN: Documentation tasks
+OPTIONAL PREFIX PARAMETER:
+Provide a prefix to categorize the ticket type:
+- FEAT: New features or capabilities
+- ISSUE: Bugs, problems, or issues to fix
+- TASK: General tasks or chores
+- INFRA: Infrastructure or DevOps work
+- DOC: Documentation tasks
 
-Project-specific prefixes (use project name or abbreviation):
-- BE-NNN: Backend project tickets
-- FE-NNN: Frontend project tickets
-- SENTRY-NNN: Sentry project tickets
-- API-NNN: API-related tickets
-
-Examples: FEAT-001, ISSUE-042, SENTRY-003, BE-15
-
-If no id is provided, auto-generates {PROJECT_ID}-{NNN} sequentially (e.g., BACKEND-001, SENTRY-042).""",
+If no prefix is provided, uses the project ID as the prefix (e.g., FRONTEND-001, BACKEND-042).""",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -114,9 +106,9 @@ If no id is provided, auto-generates {PROJECT_ID}-{NNN} sequentially (e.g., BACK
                         "type": "string",
                         "description": "Project ID (use project_list to find) case-insensitive",
                     },
-                    "id": {
+                    "prefix": {
                         "type": "string",
-                        "description": "Optional custom ticket ID (e.g., FEAT-001, SENTRY-003). Use PREFIX-NNN format. If omitted, auto-generates {PROJECT_ID}-{NNN} sequentially.",
+                        "description": "Optional prefix for ticket ID (e.g., FEAT, ISSUE, INFRA). Number is auto-generated. If omitted, uses project ID as prefix.",
                     },
                     "title": {"type": "string", "description": "Ticket title"},
                     "description": {
@@ -489,7 +481,7 @@ async def _handle_tool(name: str, args: dict) -> str:
             TicketCreate(
                 project_id=args["project_id"],
                 title=args["title"],
-                id=args.get("id"),
+                prefix=args.get("prefix"),
                 description=args.get("description"),
                 status=TicketStatus(args.get("status", "backlog")),
                 priority=Priority(args.get("priority", "medium")),
