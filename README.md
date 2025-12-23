@@ -174,6 +174,7 @@ Claude: Marked TASK-005-2 as done (1/4 tasks complete)
 | `ticket_create` | Create ticket with title, description, priority, tags |
 | `ticket_update` | Update status, priority, assignees, etc. |
 | `ticket_list` | List tickets, filter by project or status |
+| `ticket_search` | Full-text search on title/description with filters |
 
 </details>
 

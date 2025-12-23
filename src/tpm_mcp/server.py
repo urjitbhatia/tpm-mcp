@@ -208,6 +208,52 @@ Use roadmap_view first to find the ticket_id.""",
             },
         ),
         Tool(
+            name="ticket_search",
+            description="""PROJECT MANAGEMENT (TPM): Search tickets by keyword.
+
+USE THIS TOOL WHEN:
+- User asks "find tickets about X" or "search for Y"
+- Looking for tickets by keywords in title or description
+- Need to discover relevant tickets across projects
+
+Searches title and description. Supports prefix matching (e.g., "org" matches "organization").
+Case-insensitive. All filters are combinable.""",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Search query (keywords to search in title/description)",
+                    },
+                    "project_id": {
+                        "type": "string",
+                        "description": "Filter by project ID (optional, case-insensitive)",
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": ["backlog", "planned", "in-progress", "done", "blocked"],
+                        "description": "Filter by status (optional)",
+                    },
+                    "priority": {
+                        "type": "string",
+                        "enum": ["critical", "high", "medium", "low"],
+                        "description": "Filter by priority (optional)",
+                    },
+                    "tags": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Filter by tags - ticket must have all specified tags (optional)",
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Maximum results to return (default: 20, max: 100)",
+                        "default": 20,
+                    },
+                },
+                "required": ["query"],
+            },
+        ),
+        Tool(
             name="ticket_get",
             description="""PROJECT MANAGEMENT: Get info about a ticket and its tasks.
 
@@ -449,7 +495,7 @@ async def _handle_tool(name: str, args: dict) -> str:
         args["project_id"] = args["project_id"].lower()
     if "org_id" in args:
         args["org_id"] = args["org_id"].lower()
-    
+
     # Orgs
     if name == "org_create":
         org = db.create_org(OrgCreate(name=args["name"]))
@@ -510,6 +556,26 @@ async def _handle_tool(name: str, args: dict) -> str:
             for t in tickets
         ]
         return _json({"tickets": result, "offset": offset, "limit": limit, "total": total})
+
+    if name == "ticket_search":
+        limit = min(args.get("limit", 20), 100)
+        status = TicketStatus(args["status"]) if args.get("status") else None
+        priority = Priority(args["priority"]) if args.get("priority") else None
+
+        results = db.search_tickets(
+            query=args["query"],
+            project_id=args.get("project_id"),
+            status=status,
+            priority=priority,
+            tags=args.get("tags"),
+            limit=limit,
+        )
+
+        return _json({
+            "results": results,
+            "total": len(results),
+            "query": args["query"],
+        })
 
     if name == "ticket_update":
         update = TicketUpdate(

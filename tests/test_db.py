@@ -6,9 +6,17 @@ import pytest
 
 from tpm_mcp.db import TrackerDB
 from tpm_mcp.models import (
-    OrgCreate, ProjectCreate, TicketCreate, TicketUpdate,
-    TaskCreate, TaskUpdate, NoteCreate,
-    TicketStatus, TaskStatus, Priority, Complexity
+    Complexity,
+    NoteCreate,
+    OrgCreate,
+    Priority,
+    ProjectCreate,
+    TaskCreate,
+    TaskStatus,
+    TaskUpdate,
+    TicketCreate,
+    TicketStatus,
+    TicketUpdate,
 )
 
 

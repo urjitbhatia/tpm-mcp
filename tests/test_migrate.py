@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from tpm_mcp.db import TrackerDB
-from tpm_mcp.migrate import migrate_from_json, extract_acceptance_criteria, extract_metadata
+from tpm_mcp.migrate import extract_acceptance_criteria, extract_metadata, migrate_from_json
 
 
 @pytest.fixture

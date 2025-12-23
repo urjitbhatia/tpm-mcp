@@ -435,6 +435,93 @@ class TrackerDB:
         rows = self.conn.execute(query, params).fetchall()
         return [self._row_to_ticket(r) for r in rows]
 
+    def search_tickets(
+        self,
+        query: str,
+        project_id: str | None = None,
+        status: TicketStatus | None = None,
+        priority: Priority | None = None,
+        tags: list[str] | None = None,
+        limit: int = 20,
+    ) -> list[dict]:
+        """Search tickets using full-text search with optional filters.
+
+        Args:
+            query: Search query (supports prefix matching)
+            project_id: Filter by project ID (case-insensitive)
+            status: Filter by ticket status
+            priority: Filter by priority level
+            tags: Filter by tags (ticket must have all specified tags)
+            limit: Maximum results to return (default 20)
+
+        Returns:
+            List of dicts with: id, title, project_id, status, priority, tags, snippet
+        """
+        if not query or not query.strip():
+            return []
+
+        # Build FTS5 query with prefix matching for each term
+        terms = query.strip().split()
+        fts_query = " ".join(f"{term}*" for term in terms)
+
+        # Build the SQL query with joins and filters
+        sql = """
+            SELECT
+                t.id,
+                t.title,
+                t.project_id,
+                t.status,
+                t.priority,
+                t.tags,
+                snippet(tickets_fts, 1, '<b>', '</b>', '...', 32) as snippet
+            FROM tickets_fts
+            JOIN tickets t ON tickets_fts.ticket_id = t.id
+            WHERE tickets_fts MATCH ?
+        """
+        params: list = [fts_query]
+
+        # Add filters
+        if project_id:
+            project_id = self._normalize_id(project_id)
+            sql += " AND LOWER(t.project_id) = ?"
+            params.append(project_id)
+
+        if status:
+            sql += " AND t.status = ?"
+            params.append(status.value)
+
+        if priority:
+            sql += " AND t.priority = ?"
+            params.append(priority.value)
+
+        if tags:
+            # Check that ticket has all specified tags using json_each
+            for tag in tags:
+                sql += " AND EXISTS (SELECT 1 FROM json_each(t.tags) WHERE value = ?)"
+                params.append(tag)
+
+        # Order by relevance (FTS5 rank) and limit
+        sql += " ORDER BY rank LIMIT ?"
+        params.append(limit)
+
+        try:
+            rows = self.conn.execute(sql, params).fetchall()
+            return [
+                {
+                    "id": r["id"],
+                    "title": r["title"],
+                    "project_id": r["project_id"],
+                    "status": r["status"],
+                    "priority": r["priority"],
+                    "tags": _from_json(r["tags"]),
+                    "snippet": r["snippet"],
+                }
+                for r in rows
+            ]
+        except Exception:
+            # Handle FTS5 syntax errors gracefully
+            return []
+
     def update_ticket(self, ticket_id: str, data: TicketUpdate) -> Ticket | None:
         updates = []
         params = []

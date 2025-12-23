@@ -81,3 +81,26 @@ CREATE INDEX IF NOT EXISTS idx_tickets_status ON tickets(status);
 CREATE INDEX IF NOT EXISTS idx_tasks_ticket ON tasks(ticket_id);
 CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
 CREATE INDEX IF NOT EXISTS idx_notes_entity ON notes(entity_type, entity_id);
+
+-- FTS5 virtual table for full-text search on tickets (standalone, stores content)
+CREATE VIRTUAL TABLE IF NOT EXISTS tickets_fts USING fts5(
+    ticket_id,
+    title,
+    description
+);
+
+-- Triggers to keep FTS5 in sync with tickets table
+CREATE TRIGGER IF NOT EXISTS tickets_fts_insert AFTER INSERT ON tickets BEGIN
+    INSERT INTO tickets_fts(ticket_id, title, description)
+    VALUES (new.id, new.title, COALESCE(new.description, ''));
+END;
+
+CREATE TRIGGER IF NOT EXISTS tickets_fts_update AFTER UPDATE ON tickets BEGIN
+    DELETE FROM tickets_fts WHERE ticket_id = old.id;
+    INSERT INTO tickets_fts(ticket_id, title, description)
+    VALUES (new.id, new.title, COALESCE(new.description, ''));
+END;
+
+CREATE TRIGGER IF NOT EXISTS tickets_fts_delete AFTER DELETE ON tickets BEGIN
+    DELETE FROM tickets_fts WHERE ticket_id = old.id;
+END;

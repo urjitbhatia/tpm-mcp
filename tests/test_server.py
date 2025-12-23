@@ -15,7 +15,7 @@ from tpm_mcp.models import (
     TicketCreate,
     TicketStatus,
 )
-from tpm_mcp.server import _handle_tool, db as server_db
+from tpm_mcp.server import _handle_tool
 
 
 @pytest.fixture
